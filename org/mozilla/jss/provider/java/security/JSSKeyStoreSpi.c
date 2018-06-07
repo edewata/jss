@@ -667,8 +667,8 @@ getKeyByCertNickCallback
 
         cbinfo->privk = PK11_FindPrivateKeyFromCert(slot, cert, NULL /*wincx*/);
         if( cbinfo->privk ) {
-            printf("Found private key from cert with label '%s'\n",
-                cert->nickname);
+            // printf("Found private key from cert with label '%s'\n",
+            //    cert->nickname);
         }
     }
     travStat.status = PR_SUCCESS;
@@ -773,23 +773,31 @@ finish:
 }
 
 JNIEXPORT jboolean JNICALL
-Java_org_mozilla_jss_provider_java_security_JSSKeyStoreSpi_engineIsCertificateEntry
+Java_org_mozilla_jss_provider_java_security_JSSKeyStoreSpi_engineIsCertificateEntryNative
     (JNIEnv *env, jobject this, jstring alias)
 {
     PK11SlotInfo *slot;
     EngineGetCertificateCBInfo cbinfo = {NULL,NULL};
     jboolean retVal = JNI_FALSE;
 
+    printf("JSSKeyStoreSpi: engineIsCertificateEntry(%s)\n", alias);
+
     if( alias == NULL ) goto finish;
+
+    printf("JSSKeyStoreSpi: calling getTokenSlotPtr()\n");
 
     if( getTokenSlotPtr(env, this, &slot) != PR_SUCCESS ) {
         /* exception was thrown */
         goto finish;
     }
 
+    printf("JSSKeyStoreSpi: calling GetStringUTFChars()\n");
     cbinfo.targetNickname = (*env)->GetStringUTFChars(env, alias, NULL);
+    printf("JSSKeyStoreSpi: engineIsCertificateEntry(%s)\n", cbinfo.targetNickname);
+
     if(cbinfo.targetNickname == NULL ) goto finish;
 
+    printf("JSSKeyStoreSpi: calling traverseTokenObjects(engineGetCertificateTraversalCallback)\n");
     if( traverseTokenObjects(   env,
                                 slot,
                                 engineGetCertificateTraversalCallback,
@@ -805,6 +813,7 @@ Java_org_mozilla_jss_provider_java_security_JSSKeyStoreSpi_engineIsCertificateEn
         CERTCertTrust trust;
         SECStatus status;
 
+        printf("JSSKeyStoreSpi: calling CERT_GetCertTrust()\n");
         status = CERT_GetCertTrust(cbinfo.cert, &trust);
         if( status != SECSuccess ) {
             goto finish;
@@ -822,9 +831,11 @@ Java_org_mozilla_jss_provider_java_security_JSSKeyStoreSpi_engineIsCertificateEn
 
 finish:
     if( cbinfo.targetNickname != NULL ) {
+        printf("JSSKeyStoreSpi: calling ReleaseStringUTFChars()\n");
         (*env)->ReleaseStringUTFChars(env, alias, cbinfo.targetNickname);
     }
     if( cbinfo.cert != NULL) {
+        printf("JSSKeyStoreSpi: calling CERT_DestroyCertificate()\n");
         CERT_DestroyCertificate(cbinfo.cert);
     }
     return retVal;
