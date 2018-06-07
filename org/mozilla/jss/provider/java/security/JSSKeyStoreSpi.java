@@ -17,9 +17,16 @@ import java.security.cert.CertificateFactory;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import org.mozilla.jss.CryptoManager;
+import org.mozilla.jss.CryptoManager.NotInitializedException;
+import org.mozilla.jss.NoSuchTokenException;
+import org.mozilla.jss.crypto.CryptoStore;
 import org.mozilla.jss.crypto.CryptoToken;
+import org.mozilla.jss.crypto.ObjectNotFoundException;
+import org.mozilla.jss.crypto.PrivateKey;
 import org.mozilla.jss.crypto.SecretKeyFacade;
 import org.mozilla.jss.crypto.SymmetricKey;
 import org.mozilla.jss.crypto.TokenException;
@@ -28,8 +35,11 @@ import org.mozilla.jss.crypto.TokenSupplierManager;
 import org.mozilla.jss.crypto.X509Certificate;
 import org.mozilla.jss.pkcs11.PK11Token;
 import org.mozilla.jss.pkcs11.TokenProxy;
+import org.mozilla.jss.util.Util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import sun.security.x509.X509CertImpl;
 
 /**
  * The JSS implementation of the JCA KeyStore SPI.
@@ -75,12 +85,14 @@ public class JSSKeyStoreSpi extends java.security.KeyStoreSpi {
 
     protected TokenProxy proxy;
 
-    public JSSKeyStoreSpi() {
+    public JSSKeyStoreSpi() throws TokenException {
 
-        logger.debug("JSSKeyStoreSpi: <init>()");
+        logger.debug("JSSKeyStoreSpi: initialization");
 
         CryptoToken token =
             TokenSupplierManager.getTokenSupplier().getThreadToken();
+        logger.debug("JSSKeyStoreSpi: token: " + token.getName());
+
         PK11Token pk11tok = (PK11Token)token;
         proxy = pk11tok.getProxy();
     }
@@ -112,8 +124,60 @@ public class JSSKeyStoreSpi extends java.security.KeyStoreSpi {
     public Enumeration<String> engineAliases() {
 
         logger.debug("JSSKeyStoreSpi: engineAliases()");
+        new Exception().printStackTrace();
 
-        return new IteratorEnumeration<String>( getRawAliases().iterator() );
+        Set<String> aliases = new LinkedHashSet<>();
+
+        try {
+            CryptoManager cm = CryptoManager.getInstance();
+
+            logger.debug("JSSKeyStoreSpi: calling CryptoManager.getAllTokens()");
+            Enumeration<CryptoToken> tokens = cm.getAllTokens();
+
+            while (tokens.hasMoreElements()) {
+                CryptoToken token = tokens.nextElement();
+
+                if (token == cm.getInternalCryptoToken()) {
+                    continue;
+                }
+
+                String tokenName;
+                if (token == cm.getInternalKeyStorageToken()) {
+                    tokenName = null;
+                    logger.debug("JSSKeyStoreSpi: Internal token");
+                } else {
+                    tokenName = token.getName();
+                    logger.debug("JSSKeyStoreSpi: Token " + tokenName);
+                }
+
+
+                CryptoStore store = token.getCryptoStore();
+
+                logger.debug("JSSKeyStoreSpi: - certificates:");
+                for (X509Certificate cert : store.getCertificates()) {
+                    String nickname = cert.getNickname();
+                    logger.debug("JSSKeyStoreSpi:   - " + nickname);
+                    aliases.add(nickname);
+                }
+
+                logger.debug("JSSKeyStoreSpi: - private keys:");
+                for (PrivateKey privateKey : store.getPrivateKeys()) {
+                    String nickname = Util.bytesToHex(privateKey.getUniqueID());
+                    if (tokenName != null) {
+                        nickname = tokenName + ":" + nickname;
+                    }
+                    logger.debug("JSSKeyStoreSpi:   - " + nickname);
+                    aliases.add(nickname);
+                }
+            }
+
+            return new IteratorEnumeration<String>( aliases.iterator() );
+
+        } catch (NotInitializedException e) {
+            throw new RuntimeException(e);
+        } catch (TokenException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public boolean engineContainsAlias(String alias) {
@@ -142,19 +206,25 @@ public class JSSKeyStoreSpi extends java.security.KeyStoreSpi {
 
         logger.debug("JSSKeyStoreSpi: engineGetCertificate(" + alias + ")");
 
-        byte[] derCert = getDERCert(alias);
-        if( derCert == null ) {
+        try {
+            CryptoManager cm = CryptoManager.getInstance();
+            X509Certificate cert = cm.findCertByNickname(alias);
+
+            logger.debug("JSSKeyStoreSpi: cert found");
+            return new X509CertImpl(cert.getEncoded());
+
+        } catch (ObjectNotFoundException e) {
+            logger.debug("JSSKeyStoreSpi: cert not found");
             return null;
-        } else {
-            try {
-                return
-                    certFactory.generateCertificate(
-                        new ByteArrayInputStream(derCert)
-                    );
-            } catch( CertificateException e ) {
-                e.printStackTrace();
-                return null;
-            }
+
+        } catch (NotInitializedException e) {
+            throw new RuntimeException(e);
+        } catch (TokenException e) {
+            throw new RuntimeException(e);
+        } catch (CertificateEncodingException e) {
+            throw new RuntimeException(e);
+        } catch (CertificateException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -216,20 +286,97 @@ public class JSSKeyStoreSpi extends java.security.KeyStoreSpi {
 
         logger.debug("JSSKeyStoreSpi: engineGetKey(" + alias + ")");
 
-        Object o = engineGetKeyNative(alias, password);
-        if( o instanceof SymmetricKey ) {
-            return new SecretKeyFacade((SymmetricKey)o);
-        } else {
-            return (Key) o;
+        try {
+            String nickname;
+            String tokenName;
+
+            String[] parts = alias.split(":");
+            if (parts.length == 1) {
+                tokenName = null;
+                nickname = parts[0];
+            } else {
+                tokenName = parts[0];
+                nickname = parts[1];
+            }
+
+            logger.debug("JSSKeyStoreSpi: token: " + tokenName);
+            logger.debug("JSSKeyStoreSpi: nickname: " + nickname);
+
+            //Object o = engineGetKeyNative(alias, password);
+
+            CryptoManager cm = CryptoManager.getInstance();
+
+            try {
+                X509Certificate cert = cm.findCertByNickname(alias);
+                logger.debug("JSSKeyStoreSpi: found certificate with alias " + alias);
+
+                PrivateKey privateKey = cm.findPrivKeyByCert(cert);
+                if (privateKey != null) {
+                    logger.debug("JSSKeyStoreSpi: algorithm: " + privateKey.getAlgorithm());
+                    return privateKey;
+                }
+
+            } catch (ObjectNotFoundException e) {
+                logger.debug("JSSKeyStoreSpi: no certificate with alias " + alias);
+            }
+
+            CryptoToken token;
+            if (tokenName == null) {
+                token = cm.getInternalKeyStorageToken();
+            } else {
+                token = cm.getTokenByName(tokenName);
+            }
+
+            logger.debug("JSSKeyStoreSpi: finding key with nickname " + nickname);
+
+            CryptoStore store = token.getCryptoStore();
+            Key[] keys = store.getPrivateKeys();
+            if (keys.length == 0) {
+                logger.debug("JSSKeyStoreSpi: key not found");
+                return null;
+            }
+
+            for (Key key : keys) {
+
+                logger.debug("JSSKeyStoreSpi: - algorithm: " + key.getAlgorithm());
+
+                if( key instanceof SymmetricKey ) {
+                    SymmetricKey symmetricKey = (SymmetricKey)key;
+                    logger.debug("JSSKeyStoreSpi:   nickname: " + symmetricKey.getNickName());
+                    return new SecretKeyFacade(symmetricKey);
+
+                } else if( key instanceof PrivateKey ) {
+                    PrivateKey privateKey = (PrivateKey) key;
+                    String n = Util.bytesToHex(privateKey.getUniqueID());
+                    if (nickname.equals(n)) {
+                        return key;
+                    }
+                }
+            }
+
+            return null;
+
+        } catch (NoSuchTokenException e) {
+            throw new RuntimeException(e);
+        } catch (NotInitializedException e) {
+            throw new RuntimeException(e);
+        } catch (TokenException e) {
+            throw new RuntimeException(e);
         }
     }
+
     public native Object engineGetKeyNative(String alias, char[] password);
 
     /**
      * Returns true if there is a cert with this nickname but there is no
      * key associated with the cert.
      */
-    public native boolean engineIsCertificateEntry(String alias);
+    public boolean engineIsCertificateEntry(String alias) {
+        logger.debug("JSSKeyStoreSpi: engineIsCertificateEntry(" + alias + ")");
+        return engineGetCertificate(alias) != null;
+    }
+
+    public native boolean engineIsCertificateEntryNative(String alias);
 
     /**
      * Returns true if there is a key with this alias, or if
