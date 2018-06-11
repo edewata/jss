@@ -150,6 +150,12 @@ public final class JSSProvider extends java.security.Provider {
             "org.mozilla.jss.provider.java.security.KeyFactorySpi1_2");
 
         /////////////////////////////////////////////////////////////
+        // KeyManager
+        /////////////////////////////////////////////////////////////
+        put("KeyManagerFactory.JSSX509",
+                "org.mozilla.jss.provider.java.security.JSSKeyManagerFactorySpi");
+
+        /////////////////////////////////////////////////////////////
         // KeyStore
         /////////////////////////////////////////////////////////////
         put("KeyStore.PKCS11",
@@ -247,7 +253,7 @@ public final class JSSProvider extends java.security.Provider {
     }
 
     public String toString() {
-        String mozillaProviderVersion = JSS_MAJOR_VERSION + "." + 
+        String mozillaProviderVersion = JSS_MAJOR_VERSION + "." +
                                         JSS_MINOR_VERSION;
         if ( JSS_PATCH_VERSION != 0 ) {
             mozillaProviderVersion = mozillaProviderVersion + "." +
