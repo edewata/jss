@@ -24,7 +24,7 @@ class PK11RSAPrivateKey
     }
 
     public BigInteger getModulus() {
-        logger.debug("PK11RSAPrivateKey: getModulus()");
+        logger.debug("PK11RSAPrivateKey: getModulus()", new Exception());
         return new BigInteger(1, getModulusByteArray());
     }
 

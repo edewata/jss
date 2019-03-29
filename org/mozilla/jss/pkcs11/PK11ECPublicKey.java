@@ -4,14 +4,19 @@
 
 package org.mozilla.jss.pkcs11;
 
-// Requires JAVA 1.5
-//import java.security.interfaces.ECPublicKey;
 import java.math.BigInteger;
+import java.security.interfaces.ECPublicKey;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECPoint;
 
-//
-// Requires JAVA 1.5
-//public final class PK11ECPublicKey extends PK11PubKey implements ECPublicKey {
-public final class PK11ECPublicKey extends PK11PubKey {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public final class PK11ECPublicKey
+    extends PK11PubKey
+    implements ECPublicKey {
+
+    public static Logger logger = LoggerFactory.getLogger(PK11ECPublicKey.class);
 
     private static final long serialVersionUID = 1L;
     public PK11ECPublicKey(byte[] pointer) {
@@ -41,14 +46,18 @@ public final class PK11ECPublicKey extends PK11PubKey {
         return getCurveByteArray();
     }
 
-    public BigInteger getW() {
-      try {
-        return new BigInteger( getWByteArray() );
-      } catch(NumberFormatException e) {
-          throw new RuntimeException("Unable to decode EC public value: " + e.getMessage(), e);
-      }
+    public ECPoint getW() {
+        logger.debug("PK11ECPublicKey: getW()", new Exception());
+        BigInteger w = new BigInteger( getWByteArray() );
+        return null;
     }
 
     private native byte[] getCurveByteArray();
-    private native byte[] getWByteArray();
+    public native byte[] getWByteArray();
+
+    @Override
+    public ECParameterSpec getParams() {
+        logger.debug("PK11ECPublicKey: getParams()", new Exception());
+        return null;
+    }
 }

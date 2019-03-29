@@ -1,11 +1,17 @@
 package org.mozilla.jss.pkcs11;
 
+import java.math.BigInteger;
+import java.security.interfaces.ECPrivateKey;
+import java.security.spec.ECParameterSpec;
+
 import org.mozilla.jss.crypto.PrivateKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class PK11ECPrivateKey
-//    extends PK11PrivKey implements ECPrivateKey
-    extends PK11PrivKey 
+    extends PK11PrivKey implements ECPrivateKey
 {
+    public static Logger logger = LoggerFactory.getLogger(PK11ECPrivateKey.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -17,6 +23,18 @@ class PK11ECPrivateKey
 
     public PrivateKey.Type getType() {
         return PrivateKey.Type.EC;
+    }
+
+    @Override
+    public ECParameterSpec getParams() {
+        logger.debug("PK11ECPrivateKey: getParams()", new Exception());
+        return null;
+    }
+
+    @Override
+    public BigInteger getS() {
+        logger.debug("PK11ECPrivateKey: getS()", new Exception());
+        return null;
     }
 
     /**
