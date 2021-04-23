@@ -61,7 +61,6 @@ BuildRequires:  nss-tools >= 3.44
 BuildRequires:  %{java_devel}
 BuildRequires:  jpackage-utils
 BuildRequires:  slf4j
-BuildRequires:  glassfish-jaxb-api
 BuildRequires:  slf4j-jdk14
 BuildRequires:  apache-commons-lang3
 
@@ -71,7 +70,6 @@ Requires:       nss >= 3.44
 Requires:       %{java_headless}
 Requires:       jpackage-utils
 Requires:       slf4j
-Requires:       glassfish-jaxb-api
 Requires:       slf4j-jdk14
 Requires:       apache-commons-lang3
 
