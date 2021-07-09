@@ -61,6 +61,12 @@ BuildRequires:  cmake >= 3.14
 BuildRequires:  zip
 BuildRequires:  unzip
 
+%if 0%{?fedora} && 0%{?fedora} <= 33
+BuildRequires:  glibc < 2.32-8
+%endif
+%if 0%{?fedora} && 0%{?fedora} <= 34
+BuildRequires:  glibc < 2.33-15
+%endif
 BuildRequires:  gcc-c++
 BuildRequires:  nss-devel >= %{min_nss_version}, nss-devel < %{max_nss_version}
 BuildRequires:  nss-util-devel >= %{nss_version}, nss-util-devel < %{max_nss_version}
@@ -74,6 +80,12 @@ BuildRequires:  apache-commons-lang3
 
 BuildRequires:  junit
 
+%if 0%{?fedora} && 0%{?fedora} <= 33
+Requires:       glibc < 2.32-8
+%endif
+%if 0%{?fedora} && 0%{?fedora} <= 34
+Requires:       glibc < 2.33-15
+%endif
 Requires:       nss >= %{min_nss_version}, nss < %{max_nss_version}
 Requires:       nss-util >= %{min_nss_version}, nss-util < %{max_nss_version}
 Requires:       nss-tools >= %{min_nss_version}, nss-tools < %{max_nss_version}
