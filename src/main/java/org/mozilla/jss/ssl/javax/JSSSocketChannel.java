@@ -1,12 +1,19 @@
 package org.mozilla.jss.ssl.javax;
 
-import java.io.*;
-import java.net.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketOption;
 import java.nio.ByteBuffer;
-import java.nio.channels.*;
-import java.util.*;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
+import java.nio.channels.SocketChannel;
+import java.nio.channels.WritableByteChannel;
+import java.util.Set;
 
-import javax.net.ssl.*;
+import javax.net.ssl.SSLEngineResult;
+import javax.net.ssl.SSLException;
 
 /**
  * SSL-enabled SocketChannel following the javax.net.ssl.SSLSocket interface.
@@ -391,7 +398,7 @@ public class JSSSocketChannel extends SocketChannel {
                 inboundClosed = true;
             }
         } finally {
-            engine.cleanup();
+            engine.cleanup(); // free read buffer
             engine = null;
 
             if (autoClose) {
