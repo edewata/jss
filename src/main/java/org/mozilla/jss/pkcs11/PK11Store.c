@@ -360,6 +360,81 @@ finish:
     return;
 }
 
+/**********************************************************************
+ * PK11Store.putCertsInVector
+ */
+JNIEXPORT jobject JNICALL
+Java_org_mozilla_jss_pkcs11_PK11Store_importCert
+    (JNIEnv *env, jobject this, jbyteArray jdata, jstring jnickname)
+{
+    PK11SlotInfo *slot;
+    char *nickname;
+    SECItem der_cert;
+    CERTCertificate *cert;
+    SECStatus rv;
+    jobject result = NULL;
+
+    PR_ASSERT(env!=NULL && this!=NULL);
+
+    nickname = (*env)->GetStringUTFChars(env, jnickname, NULL);
+    printf("Importing cert %s\n", nickname);
+
+    if (JSS_PK11_getStoreSlotPtr(env, this, &slot) != PR_SUCCESS) {
+        ASSERT_OUTOFMEM(env);
+        goto finish;
+    }
+
+    PR_ASSERT(slot!=NULL);
+
+    // log in if the slot does not have publicly readable certs
+    if (!PK11_IsFriendly(slot)) {
+        PK11_Authenticate(slot, PR_TRUE /*load certs*/, NULL /*wincx*/);
+    }
+
+    printf("Slot name: %s\n", PK11_GetSlotName(slot));
+    printf("Token name: %s\n", PK11_GetTokenName(slot));
+
+    if (jdata == NULL) {
+        JSS_throw(env, NULL_POINTER_EXCEPTION);
+        goto finish;
+    }
+
+    der_cert.data = NULL;
+    der_cert.len = 0;
+
+    printf("Converting cert\n");
+    // copy the java byte array into a local copy
+    if (!JSS_RefByteArray(env, jdata, (jbyte **) &der_cert.data, (jsize *) &der_cert.len)) {
+        if (der_cert.len == 0) {
+            JSS_throwMsg(env, GENERIC_EXCEPTION, "Missing certificate data");
+        } else {
+            ASSERT_OUTOFMEM(env);
+        }
+        goto finish;
+    }
+
+    printf("Decoding cert\n");
+    cert = CERT_DecodeCertFromPackage((char *)der_cert.data, der_cert.len);
+    if (!cert) {
+        JSS_throwMsg(env, GENERIC_EXCEPTION, "Unable to decode certificate data");
+        goto finish;
+    }
+
+    printf("Importing cert\n");
+    rv = PK11_ImportCert(slot, cert, CK_INVALID_HANDLE, nickname, PR_FALSE);
+    if (rv != SECSuccess) {
+        JSS_throwMsg(env, GENERIC_EXCEPTION, "Unable to import certificate data");
+        goto finish;
+    }
+
+    result = JSS_PK11_wrapCertAndSlot(env, &cert, &slot);
+
+finish:
+    JSS_DerefByteArray(env, jdata, der_cert.data, JNI_ABORT);
+    (*env)->ReleaseStringUTFChars(env, jnickname, nickname);
+    return result;
+}
+
 /************************************************************************
  *
  * J S S _ g e t S t o r e S l o t P t r
