@@ -253,7 +253,11 @@ public abstract class JSSEngine extends javax.net.ssl.SSLEngine {
                      org.mozilla.jss.crypto.PrivateKey localKey) {
         super(peerHost, peerPort);
 
+        logger.info("Creating JSSEngine(" + peerHost + ":" + peerPort + ")");
+
         cert = (PK11Cert) localCert;
+        logger.info("Certificate: " + cert.getSubjectDN());
+
         key = (PK11PrivKey) localKey;
 
         session = new JSSSession(this, BUFFER_SIZE);
@@ -449,6 +453,9 @@ public abstract class JSSEngine extends javax.net.ssl.SSLEngine {
      *
      */
     public void setCertFromAlias(String alias) throws IllegalArgumentException {
+
+        logger.info("Setting certificate to " + alias);
+
         if (alias == null) {
             // Per calling, semantics, get rid of any existing cert/key we
             // might have.
@@ -487,7 +494,10 @@ public abstract class JSSEngine extends javax.net.ssl.SSLEngine {
             // they are always PK11Cert instances. We're going to need an
             // instance of PK11Cert anyways, in order to correctly pass it to
             // the native layer.
+
             cert = (PK11Cert) jkm.getCertificate(alias);
+            logger.info("Setting certificate to " + cert.getSubjectDN());
+
             key = (PK11PrivKey) jkm.getPrivateKey(alias);
 
             if (cert != null && key != null) {
