@@ -1,0 +1,113 @@
+name: DS Tests
+
+on: [push, pull_request]
+
+jobs:
+  init:
+    name: Initializing Workflow
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.init.outputs.matrix }}
+      repo: ${{ steps.init.outputs.repo }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Initialize workflow
+        id: init
+        env:
+          BASE64_MATRIX: ${{ secrets.BASE64_MATRIX }}
+          BASE64_REPO: ${{ secrets.BASE64_REPO }}
+        run: |
+          tests/bin/init-workflow.sh
+
+  build:
+    name: Building JSS
+    needs: init
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build runner image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          build-args: |
+            OS_VERSION=${{ matrix.os }}
+            COPR_REPO=${{ needs.init.outputs.repo }}
+            BUILD_OPTS=--with-timestamp --with-commit-id
+          tags: jss-runner
+          target: jss-runner
+          outputs: type=docker,dest=ds-runner.tar
+
+      - name: Store runner image
+        uses: actions/cache@v3
+        with:
+          key: ds-runner-${{ matrix.os }}-${{ github.run_id }}
+          path: ds-runner.tar
+
+  ds-ssl-test:
+    name: Testing DS with SSL
+    needs: [init, build]
+    runs-on: ubuntu-latest
+    env:
+      SHARED: /tmp/workdir/jss
+    strategy:
+      matrix: ${{ fromJSON(needs.init.outputs.matrix) }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v2
+
+      - name: Retrieve runner image
+        uses: actions/cache@v3
+        with:
+          key: ds-runner-${{ matrix.os }}-${{ github.run_id }}
+          path: ds-runner.tar
+
+      - name: Load runner image
+        run: docker load --input ds-runner.tar
+
+      - name: Run container
+        run: |
+          IMAGE=jss-runner \
+          NAME=server \
+          HOSTNAME=server.example.com \
+          tests/bin/runner-init.sh
+
+      - name: Install DS and PKI packages
+        run: docker exec server dnf install -y 389-ds-base dogtag-pki
+
+      - name: Create DS instance
+        run: docker exec server ${SHARED}/tests/bin/ds-create.sh
+
+      - name: Create signing cert in DS
+        run: docker exec server ${SHARED}/tests/bin/ds-cert-signing-create.sh
+
+      - name: Create server cert in DS
+        run: docker exec server ${SHARED}/tests/bin/ds-cert-server-create.sh
+
+      - name: Enable SSL connection in DS
+        run: docker exec server ${SHARED}/tests/bin/ds-ssl-enable.sh
+
+      - name: Remove DS instance
+        run: docker exec server ${SHARED}/tests/bin/ds-remove.sh
+
+      - name: Gather artifacts
+        if: always()
+        run: |
+          tests/bin/ds-artifacts-save.sh server
+        continue-on-error: true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: ds-ssl-test-${{ matrix.os }}
+          path: |
+            /tmp/artifacts/server
