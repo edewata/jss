@@ -79,8 +79,8 @@ BuildRequires:  zip
 BuildRequires:  unzip
 
 BuildRequires:  gcc-c++
-BuildRequires:  nss-devel >= 3.66
-BuildRequires:  nss-tools >= 3.66
+BuildRequires:  nss-devel = 3.79
+BuildRequires:  nss-tools = 3.79
 BuildRequires:  %{java_devel}
 BuildRequires:  jpackage-utils
 BuildRequires:  slf4j
@@ -100,7 +100,7 @@ This only works with gcj. Other JREs require that JCE providers be signed.
 
 Summary:        Java Security Services (JSS)
 
-Requires:       nss >= 3.66
+Requires:       nss = 3.79
 Requires:       %{java_headless}
 Requires:       jpackage-utils
 Requires:       slf4j
