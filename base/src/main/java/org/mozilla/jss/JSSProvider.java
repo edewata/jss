@@ -42,7 +42,7 @@ public final class JSSProvider extends java.security.Provider {
     }
 
     public JSSProvider(boolean initialize) {
-        super("Mozilla-JSS", JSS_VERSION, "Provides Signature, Message Digesting, and RNG");
+        super("Mozilla-JSS", 5.4, "Provides Signature, Message Digesting, and RNG");
 
         if (initialize) {
             initializeProvider();
@@ -71,7 +71,6 @@ public final class JSSProvider extends java.security.Provider {
      *
      * If the JSSProvider is already loaded, this is a no-op.
      */
-    @Override
     public Provider configure(String arg) {
         try {
             cm = JSSLoader.init(arg);

@@ -75,13 +75,13 @@ jobs:
       docker exec -u 0 runner apt-get install -y \
           cmake zip unzip \
           g++ libnss3-dev libnss3-tools \
-          openjdk-17-jdk libcommons-lang3-java libslf4j-java junit4
+          openjdk-1.8.0-jdk libcommons-lang3-java libslf4j-java junit4
     displayName: Install build dependencies
 
   - script: ./build.sh --with-tests
     displayName: Build JSS binaries, Javadoc, and run tests
     env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      JAVA_HOME: /usr/lib/jvm/java-1.8.0-openjdk-amd64
 
 - job: SymbolTest
   pool:

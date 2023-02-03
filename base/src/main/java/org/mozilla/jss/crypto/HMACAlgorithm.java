@@ -53,7 +53,7 @@ public class HMACAlgorithm extends DigestAlgorithm {
      * symmetric key together with SHA-X digesting to create a form of
      * signature.
      */
-    @Deprecated(since="5.0.1", forRemoval=true)
+    @Deprecated
     public static final HMACAlgorithm SHA1 = new HMACAlgorithm
         (SEC_OID_HMAC_SHA1, "SHA-1-HMAC",
                 OBJECT_IDENTIFIER.RSA_DIGEST.subBranch(7), 20);

@@ -24,7 +24,7 @@ jobs:
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: 17
         distribution: 'adopt'
 
     - name: Install Fedora/CentOS dependencies
@@ -36,7 +36,8 @@ jobs:
     - name: Install Debian/Ubuntu dependencies
       if: ${{ startsWith(matrix.os, 'debian:') || startsWith(matrix.os, 'ubuntu:') }}
       run: |
-        apt-get update
+        apt-get -y update
+        apt-get -y upgrade
         apt-get install -y \
             cmake zip unzip \
             g++ libnss3-dev libnss3-tools \
@@ -63,7 +64,7 @@ jobs:
     name: Symbol Test
     runs-on: ubuntu-latest
     env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      JAVA_HOME: /usr/lib/jvm/java-1.8.0-openjdk-amd64
     steps:
       - name: Clone repository
         uses: actions/checkout@v3
@@ -95,7 +96,7 @@ jobs:
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
-        java-version: '17'
+        java-version: 8
         distribution: 'adopt'
 
     - name: Install Fedora dependencies

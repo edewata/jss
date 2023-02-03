@@ -159,12 +159,13 @@ public class PBKDF2Params implements ASN1Value {
             SEQUENCE seq = (SEQUENCE) seqt.decode(implicitTag, istream);
 
             CHOICE salt = (CHOICE) seq.elementAt(0);
-            if (salt.getValue() instanceof OCTET_STRING saltValue) {
-                specified = saltValue;
+            ASN1Value saltValue = salt.getValue();
+            if (saltValue instanceof OCTET_STRING) {
+                specified = (OCTET_STRING) saltValue;
             }
 
-            if (salt.getValue() instanceof AlgorithmIdentifier saltSource) {
-                otherSource = saltSource;
+            if (saltValue instanceof AlgorithmIdentifier) {
+                otherSource = (AlgorithmIdentifier) saltValue;
             }
 
             return new PBKDF2Params( specified,

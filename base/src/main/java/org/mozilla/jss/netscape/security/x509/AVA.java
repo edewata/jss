@@ -198,7 +198,12 @@ public final class AVA implements DerEncoder {
      */
     @Override
     public boolean equals(Object other) {
-        return other instanceof AVA ava && equals(ava);
+        if (other instanceof AVA) {
+            AVA ava = (AVA) other;
+            return equals(ava);
+        } else {
+            return false;
+        }
     }
 
     @Override

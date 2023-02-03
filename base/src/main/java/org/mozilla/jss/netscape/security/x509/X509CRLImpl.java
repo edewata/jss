@@ -574,7 +574,8 @@ public class X509CRLImpl extends X509CRL {
     public boolean isRevoked(Certificate cert) {
         if (cert == null)
             return false;
-        if (cert instanceof X509Certificate x509Certificate) {
+        if (cert instanceof X509Certificate) {
+            X509Certificate x509Certificate = (X509Certificate) cert;
             return isRevoked(x509Certificate.getSerialNumber());
         }
         return false;
@@ -901,7 +902,8 @@ public class X509CRLImpl extends X509CRL {
             Enumeration<Extension> e = exts.getElements();
             while (e.hasMoreElements()) {
                 Extension ext = e.nextElement();
-                if (ext instanceof CRLNumberExtension numExt) {
+                if (ext instanceof CRLNumberExtension) {
+                    CRLNumberExtension numExt = (CRLNumberExtension) ext;
                     return (BigInteger) numExt.get(CRLNumberExtension.NUMBER);
                 }
             }
@@ -918,7 +920,8 @@ public class X509CRLImpl extends X509CRL {
             Enumeration<Extension> e = exts.getElements();
             while (e.hasMoreElements()) {
                 Extension ext = e.nextElement();
-                if (ext instanceof DeltaCRLIndicatorExtension numExt) {
+                if (ext instanceof DeltaCRLIndicatorExtension) {
+                    DeltaCRLIndicatorExtension numExt = (DeltaCRLIndicatorExtension) ext;
                     return (BigInteger) numExt.get(DeltaCRLIndicatorExtension.NUMBER);
                 }
             }

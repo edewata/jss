@@ -288,7 +288,12 @@ public class X509CertInfo implements CertAttrSet, Serializable {
      */
     @Override
     public boolean equals(Object other) {
-        return (other instanceof X509CertInfo certInfo) && equals(certInfo);
+        if (other instanceof X509CertInfo) {
+            X509CertInfo certInfo = (X509CertInfo) other;
+            return equals(certInfo);
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -610,28 +615,28 @@ public class X509CertInfo implements CertAttrSet, Serializable {
         String suffix = attrName.getSuffix();
         boolean suffixIsNull = suffix == null;
 
-        return switch (attr) {
-            case ATTR_VERSION -> suffixIsNull ? version : version.get(suffix);
-            case ATTR_SERIAL -> suffixIsNull ? serialNum : serialNum.get(suffix);
-            case ATTR_ALGORITHM -> suffixIsNull ? algId : algId.get(suffix);
-            case ATTR_ISSUER -> suffixIsNull ? issuer : issuer.get(suffix);
-            case ATTR_VALIDITY -> suffixIsNull ? interval : interval.get(suffix);
-            case ATTR_SUBJECT -> suffixIsNull ? subject : subject.get(suffix);
-            case ATTR_KEY -> suffixIsNull ? pubKey : pubKey.get(suffix);
-            case ATTR_ISSUER_ID -> {
-                if (suffixIsNull) yield issuerUniqueId;
-                yield issuerUniqueId == null ? null : issuerUniqueId.get(suffix);
+        switch (attr) {
+            case ATTR_VERSION: return suffixIsNull ? version : version.get(suffix);
+            case ATTR_SERIAL: return suffixIsNull ? serialNum : serialNum.get(suffix);
+            case ATTR_ALGORITHM: return suffixIsNull ? algId : algId.get(suffix);
+            case ATTR_ISSUER: return suffixIsNull ? issuer : issuer.get(suffix);
+            case ATTR_VALIDITY: return suffixIsNull ? interval : interval.get(suffix);
+            case ATTR_SUBJECT: return suffixIsNull ? subject : subject.get(suffix);
+            case ATTR_KEY: return suffixIsNull ? pubKey : pubKey.get(suffix);
+            case ATTR_ISSUER_ID: {
+                if (suffixIsNull) return issuerUniqueId;
+                return issuerUniqueId == null ? null : issuerUniqueId.get(suffix);
             }
-            case ATTR_SUBJECT_ID -> {
-                if (suffixIsNull) yield subjectUniqueId;
-                yield subjectUniqueId == null ? null : subjectUniqueId.get(suffix);
+            case ATTR_SUBJECT_ID: {
+                if (suffixIsNull) return subjectUniqueId;
+                return subjectUniqueId == null ? null : subjectUniqueId.get(suffix);
             }
-            case ATTR_EXTENSIONS -> {
-                if (suffixIsNull) yield extensions;
-                yield extensions == null ? null : extensions.get(suffix);
+            case ATTR_EXTENSIONS: {
+                if (suffixIsNull) return extensions;
+                return extensions == null ? null : extensions.get(suffix);
             }
-            default -> null;
-        };
+            default: return null;
+        }
     }
 
     /*

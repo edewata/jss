@@ -725,7 +725,7 @@ public class X509CertImpl extends X509Certificate
      * @deprecated Use getSubjectName() or getSubjectX500Principal() instead.
      */
     @Override
-    @Deprecated(since="5.2.0")
+    @Deprecated
     public Principal getSubjectDN() {
         return getSubjectName();
     }
@@ -761,7 +761,7 @@ public class X509CertImpl extends X509Certificate
      * @deprecated Use getIssuerName() or getIssuerX500Principal() instead.
      */
     @Override
-    @Deprecated(since="5.2.0")
+    @Deprecated
     public Principal getIssuerDN() {
         return getIssuerName();
     }

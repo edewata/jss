@@ -55,9 +55,9 @@ ExcludeArch: i686
 # Java
 ################################################################################
 
-%define java_devel java-17-openjdk-devel
-%define java_headless java-17-openjdk-headless
-%define java_home %{_jvmdir}/jre-17-openjdk
+%define java_devel java-1.8.0-openjdk-devel
+%define java_headless java-1.8.0-openjdk-headless
+%define java_home %{_jvmdir}/java-1.8.0-openjdk
 
 ################################################################################
 # Build Options

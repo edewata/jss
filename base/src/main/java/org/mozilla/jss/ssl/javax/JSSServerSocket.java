@@ -1,10 +1,22 @@
 package org.mozilla.jss.ssl.javax;
 
-import java.io.*;
-import java.net.*;
-import java.nio.channels.*;
-import java.util.*;
-import javax.net.ssl.*;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketAddress;
+import java.net.SocketException;
+import java.net.SocketOption;
+import java.nio.channels.ServerSocketChannel;
+import java.util.Collection;
+import java.util.EventListener;
+import java.util.Set;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.X509KeyManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.mozilla.jss.pkcs11.PK11Cert;
 import org.mozilla.jss.pkcs11.PK11PrivKey;
@@ -587,18 +599,15 @@ public class JSSServerSocket extends SSLServerSocket {
 
     /* == stubs for Java 9 Socket == */
 
-    @Override
     public <T> ServerSocket setOption(SocketOption<T> name, T value) throws IOException {
         getInternalChannel().setOption(name, value);
         return this;
     }
 
-    @Override
     public <T> T getOption(SocketOption<T> name) throws IOException {
         return getInternalChannel().getOption(name);
     }
 
-    @Override
     public Set<SocketOption<?>> supportedOptions() {
         return getInternalChannel().supportedOptions();
     }
