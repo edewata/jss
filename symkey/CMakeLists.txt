@@ -24,13 +24,6 @@ jar(symkey-jar
         symkey-classes
 )
 
-install(
-    FILES
-        ${CMAKE_CURRENT_BINARY_DIR}/jss-symkey.jar
-    DESTINATION
-        ${JNI_DIR}
-)
-
 set(SYMKEY_JAR ${CMAKE_BINARY_DIR}/jss-symkey.jar CACHE INTERNAL "symkey jar file")
 
 set(SYMKEY_PUBLIC_INCLUDE_DIRS
@@ -73,9 +66,16 @@ target_link_libraries(${SYMKEY_SHARED_LIBRARY}
     smime3 ssl3 nss3 nssutil3 plc4 plds4 nspr4 pthread dl)
 
 install(
-    TARGETS
-        ${SYMKEY_SHARED_LIBRARY}
-    LIBRARY DESTINATION
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/jss-symkey.jar
+    DESTINATION
+        ${JNI_DIR}
+)
+
+install(
+    FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/libjss-symkey.so
+    DESTINATION
         ${LIB_DIR}/jss
 )
 
