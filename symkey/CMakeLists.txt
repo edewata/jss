@@ -49,21 +49,65 @@ set(symkey_library_SRCS
     src/main/java/org/mozilla/jss/symkey/NistSP800_108KDF.cpp
 )
 
-include_directories(${SYMKEY_PRIVATE_INCLUDE_DIRS})
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lib)
 
-add_library(${SYMKEY_SHARED_LIBRARY} SHARED
-    ${symkey_library_SRCS})
+add_custom_target(
+    symkey-so ALL
+    DEPENDS
+        symkey-jar
+    COMMENT
+       "Building symkey shared library")
 
-add_dependencies(${SYMKEY_SHARED_LIBRARY} symkey-jar)
+foreach(source ${symkey_library_SRCS})
 
-set_target_properties(${SYMKEY_SHARED_LIBRARY}
-    PROPERTIES
-        OUTPUT_NAME
-            jss-symkey
+    get_filename_component(name ${source} NAME_WE)
+    get_filename_component(ext ${source} EXT)
+    get_filename_component(dir ${source} DIRECTORY)
+
+    # /usr/bin/c++
+    #     -I${CMAKE_CURRENT_BINARY_DIR}/include
+    #     -I/usr/lib/jvm/java/include
+    #     -I/usr/lib/jvm/java/include/linux
+    #     -I/usr/include/nspr4
+    #     -I/usr/include/nss3
+    #     -fPIC
+    #     -o ${CMAKE_CURRENT_BINARY_DIR}/lib/<filename>.o
+    #     -c ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/mozilla/jss/symkey/<filename>.cpp
+    add_custom_command(
+        TARGET
+            symkey-so
+        COMMAND
+            ${CMAKE_CXX_COMPILER}
+            -I${CMAKE_CURRENT_BINARY_DIR}/include
+            -I/usr/lib/jvm/java/include
+            -I/usr/lib/jvm/java/include/linux
+            -I/usr/include/nspr4
+            -I/usr/include/nss3
+            -fPIC
+            -o ${CMAKE_CURRENT_BINARY_DIR}/lib/${name}.o
+            -c ${CMAKE_CURRENT_SOURCE_DIR}/${dir}/${name}${ext}
+        COMMENT
+            "Building symkey/lib/${name}.o"
+    )
+endforeach()
+
+# /usr/bin/c++
+#     -o libjss-symkey.so
+#     -lsmime3 -lssl3 -lnss3 -lnssutil3 -lplc4 -lplds4 -lnspr4 -lpthread -ldl
+#     -fPIC -shared -Wl,-soname,libjss-symkey.so
+#     ${CMAKE_CURRENT_BINARY_DIR}/lib/*.o
+add_custom_command(
+    TARGET
+        symkey-so
+    COMMAND
+        ${CMAKE_CXX_COMPILER}
+        -o libjss-symkey.so
+        ${JSS_LD_FLAGS}
+        -fPIC -shared -Wl,-soname,libjss-symkey.so
+        ${CMAKE_CURRENT_BINARY_DIR}/lib/*.o
+    COMMENT
+        "Building symkey/lib/libjss-symkey.so"
 )
-
-target_link_libraries(${SYMKEY_SHARED_LIBRARY}
-    smime3 ssl3 nss3 nssutil3 plc4 plds4 nspr4 pthread dl)
 
 install(
     FILES
