@@ -134,13 +134,31 @@ macro(jss_build_c_file C_FILE C_OUTPUT C_TARGET C_DIR)
     # add_custom_command+add_custom_target so parallel builds work. Note that
     # each build depends on generate_java and generate_includes to have
     # finished, else many headers wouldn't exist.
+
+    # /usr/bin/cc
+    #     -fPIC -O2 -Wall -std=gnu99
+    #     -Wno-cast-function-type -Wno-unused-parameter -Wno-unknown-warning-option
+    #     -Wno-unused-but-set-variable -Werror-implicit-function-declaration -Wno-switch
+    #     -I${CMAKE_BINARY_DIR}/include/jss -I/usr/lib/jvm/java/include -I/usr/lib/jvm/java/include/linux
+    #     -I/usr/lib/jvm/java/include -I/usr/include/nspr4 -I/usr/include/nss3
+    #     -L/usr/lib64 -L/usr/lib64
+    #     -o ${CMAKE_BINARY_DIR}/lib/<filename>.o
+    #     -c ${CMAKE_SOURCE_DIR}/<path>/<filename>.c
     add_custom_command(
-        OUTPUT "${C_OUTPUT}"
-        COMMAND ${CMAKE_C_COMPILER} -fPIC ${JSS_C_FLAGS} -o ${C_OUTPUT} -c ${C_FILE}
-        WORKING_DIRECTORY ${C_DIR}
-        DEPENDS ${C_FILE}
-        DEPENDS generate_java
-        DEPENDS generate_includes
+        OUTPUT
+            "${C_OUTPUT}"
+        COMMAND
+            ${CMAKE_C_COMPILER}
+            -fPIC
+            ${JSS_C_FLAGS}
+            -o ${C_OUTPUT}
+            -c ${C_FILE}
+        WORKING_DIRECTORY
+            ${C_DIR}
+        DEPENDS
+            ${C_FILE}
+            generate_java
+            generate_includes
     )
 
     add_custom_target(
@@ -173,11 +191,43 @@ macro(jss_build_c)
     # limiting which symbols are made public. We only need to make the JNI
     # symbols public as libjss.so should only be used from Java in conjunction
     # with jss.jar.
+
+    # /usr/bin/cc
+    #     -lsmime3 -lssl3 -lnss3 -lnssutil3 -lplc4 -lplds4 -lnspr4 -lpthread -ldl
+    #     -shared -Wl,-z,defs -Wl,-soname -Wl,libjss.so
+    #     -o ${CMAKE_BINARY_DIR}/lib/libjss.so
+    #     ${CMAKE_BINARY_DIR}/lib/*.o
     add_custom_command(
-        OUTPUT "${JSS_SO_PATH}" "${JSS_TESTS_SO_PATH}"
-        COMMAND ${CMAKE_C_COMPILER} -o ${JSS_TESTS_SO_PATH} ${LIB_OUTPUT_DIR}/*.o ${JSS_LD_FLAGS} ${JSS_LIBRARY_FLAGS}
-        COMMAND ${CMAKE_C_COMPILER} -o ${JSS_SO_PATH} ${LIB_OUTPUT_DIR}/*.o ${JSS_LD_FLAGS} ${JSS_VERSION_SCRIPT} ${JSS_LIBRARY_FLAGS}
-        DEPENDS generate_c
+        OUTPUT
+            "${JSS_TESTS_SO_PATH}"
+        COMMAND
+            ${CMAKE_C_COMPILER}
+            ${JSS_LD_FLAGS}
+            ${JSS_LIBRARY_FLAGS}
+            -o ${JSS_TESTS_SO_PATH}
+            ${LIB_OUTPUT_DIR}/*.o
+        DEPENDS
+            generate_c
+    )
+
+    # /usr/bin/cc
+    #     -lsmime3 -lssl3 -lnss3 -lnssutil3 -lplc4 -lplds4 -lnspr4 -lpthread -ldl
+    #     -Wl,--version-script,${PROJECT_SOURCE_DIR}/lib/jss.map
+    #     -shared -Wl,-z,defs -Wl,-soname -Wl,libjss.so
+    #     -o ${CMAKE_BINARY_DIR}/libjss.so
+    #     ${CMAKE_BINARY_DIR}/lib/*.o
+    add_custom_command(
+        OUTPUT
+            "${JSS_SO_PATH}"
+        COMMAND
+            ${CMAKE_C_COMPILER}
+            ${JSS_LD_FLAGS}
+            ${JSS_VERSION_SCRIPT}
+            ${JSS_LIBRARY_FLAGS}
+            -o ${JSS_SO_PATH}
+            ${LIB_OUTPUT_DIR}/*.o
+        DEPENDS
+            generate_c
     )
 
     # Add a target for anything depending on the library existing.
