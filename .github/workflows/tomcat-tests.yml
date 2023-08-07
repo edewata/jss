@@ -39,6 +39,11 @@ jobs:
     env:
       SHARED: /tmp/workdir/pki
     steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install xmlstarlet
+
       - name: Clone repository
         uses: actions/checkout@v3
 
@@ -108,9 +113,15 @@ jobs:
               --keystoreType pkcs11 \
               --keystoreProvider Mozilla-JSS
 
+      - name: Deploy ROOT web application
+        run: |
+          docker exec server pki-server webapp-deploy \
+              --descriptor /usr/share/pki/server/conf/Catalina/localhost/ROOT.xml \
+              ROOT
+
       - name: Start Tomcat
         run: |
-          docker exec server pki-server start
+          docker exec server pki-server start --wait -v
 
       - name: Set up client container
         run: |
@@ -122,9 +133,19 @@ jobs:
       - name: Connect client container to network
         run: docker network connect example client --alias client.example.com
 
-      - name: Wait for Tomcat to start
+      - name: Install dependencies
+        run: docker exec client dnf install -y sslscan
+
+      - name: Check SSL connection
         run: |
-          tests/bin/tomcat-start-wait.sh client https://server.example.com:8443
+          docker exec client sslscan --xml=sslscan.xml server.example.com:8443
+
+          # TLS 1.3 should be enabled
+          echo -n "1" > expected
+          xmlstarlet sel -t -v \
+              "/document/ssltest/protocol[@type='tls' and @version='1.3']/@enabled" \
+              sslscan.xml > actual
+          diff expected actual
 
       - name: Stop Tomcat
         run: |
@@ -144,6 +165,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: https-nss-test
+          name: tomcat-test
           path: |
             /tmp/artifacts/server
