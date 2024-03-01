@@ -7,6 +7,7 @@ on:
 
 env:
   NAMESPACE: ${{ vars.REGISTRY_NAMESPACE || github.repository_owner }}
+  JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
 
 jobs:
   publish-maven:
@@ -20,7 +21,7 @@ jobs:
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: 'adopt'
 
       - name: Check settings.xml

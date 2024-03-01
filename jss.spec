@@ -55,9 +55,9 @@ ExcludeArch: i686
 # Java
 ################################################################################
 
-%define java_devel java-17-openjdk-devel
-%define java_headless java-17-openjdk-headless
-%define java_home %{_jvmdir}/jre-17-openjdk
+%global java_version 17
+%define java_devel java-%{java_version}-openjdk-devel
+%define java_home %{_jvmdir}/jre-%{java_version}-openjdk
 
 ################################################################################
 # Build Options
@@ -105,7 +105,6 @@ Summary:        Java Security Services (JSS)
 
 Requires:       nss >= 3.66
 
-Requires:       %{java_headless}
 Requires:       mvn(org.apache.commons:commons-lang3)
 Requires:       mvn(org.slf4j:slf4j-api)
 Requires:       mvn(org.slf4j:slf4j-jdk14)
@@ -195,6 +194,12 @@ This package provides test suite for JSS.
 
 %autosetup -n jss-%{version}%{?phase:-}%{?phase} -p 1
 
+# update release version for maven-compiler-plugin
+%pom_xpath_set "//pom:plugin[pom:artifactId='maven-compiler-plugin']/pom:configuration/pom:release" %{java_version} base
+%pom_xpath_set "//pom:plugin[pom:artifactId='maven-compiler-plugin']/pom:configuration/pom:release" %{java_version} examples
+%pom_xpath_set "//pom:plugin[pom:artifactId='maven-compiler-plugin']/pom:configuration/pom:release" %{java_version} tomcat
+%pom_xpath_set "//pom:plugin[pom:artifactId='maven-compiler-plugin']/pom:configuration/pom:release" %{java_version} tomcat-9.0
+
 # disable native modules since they will be built by CMake
 %pom_disable_module native
 %pom_disable_module symkey
@@ -274,7 +279,6 @@ touch %{_vpath_builddir}/.targets/finished_generate_javadocs
     --sysconf-dir=%{_sysconfdir} \
     --share-dir=%{_datadir} \
     --cmake=%{__cmake} \
-    --java-home=%{java_home} \
     --jni-dir=%{_jnidir} \
     --version=%{version} \
     --without-java \
@@ -285,6 +289,8 @@ touch %{_vpath_builddir}/.targets/finished_generate_javadocs
 ################################################################################
 %install
 ################################################################################
+
+export JAVA_HOME=%{java_home}
 
 # install Java binaries and Javadoc
 %mvn_install

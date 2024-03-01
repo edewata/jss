@@ -84,8 +84,6 @@ function(javac target)
         list(APPEND javac_options -h ${header_dir})
     endif()
 
-    list(APPEND javac_options -source 17)
-    list(APPEND javac_options -target 17)
     list(APPEND javac_options @${file_list})
 
     add_custom_command(

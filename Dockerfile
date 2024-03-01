@@ -6,6 +6,7 @@
 
 ARG BASE_IMAGE="registry.fedoraproject.org/fedora:latest"
 ARG COPR_REPO=""
+ARG JAVA_VERSION="17"
 
 ################################################################################
 FROM $BASE_IMAGE AS jss-base
@@ -26,22 +27,31 @@ RUN if [ -n "$COPR_REPO" ]; then dnf copr enable -y $COPR_REPO; fi
 
 # Install JSS runtime dependencies
 RUN dnf install -y dogtag-jss \
-    && dnf remove -y dogtag-* --noautoremove \
+    && rpm -e --nodeps $(rpm -qa java-* dogtag-*) \
     && dnf clean all \
     && rm -rf /var/cache/dnf
 
 ################################################################################
 FROM jss-deps AS jss-builder-deps
 
-# Install build tools
-RUN dnf install -y rpm-build
+ARG JAVA_VERSION
 
 # Import JSS sources
 COPY jss.spec /root/jss/
+COPY build.sh /root/jss/
 WORKDIR /root/jss
 
 # Install JSS build dependencies
-RUN dnf builddep -y --spec jss.spec
+RUN dnf install -y rpm-build \
+    && ./build.sh \
+        --work-dir=build \
+        --java-version=$JAVA_VERSION \
+        spec \
+    && dnf builddep \
+        -y \
+        --spec build/SPECS/jss.spec \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
 
 ################################################################################
 FROM jss-builder-deps AS jss-builder
@@ -50,7 +60,10 @@ FROM jss-builder-deps AS jss-builder
 COPY . /root/jss/
 
 # Build JSS packages
-RUN ./build.sh --work-dir=build rpm
+RUN ./build.sh \
+    --work-dir=build \
+    --java-version=$JAVA_VERSION \
+    rpm
 
 ################################################################################
 FROM alpine:latest AS jss-dist

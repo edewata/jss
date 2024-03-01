@@ -2,6 +2,9 @@ name: Build Tests
 
 on: [push, pull_request]
 
+env:
+  JAVA_VERSION: ${{ vars.JAVA_VERSION || '17' }}
+
 jobs:
   wait-for-build:
     name: Waiting for build
@@ -41,7 +44,7 @@ jobs:
     - name: Set up Java
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: ${{ env.JAVA_VERSION }}
         distribution: 'adopt'
 
     - name: Install build dependencies
@@ -50,7 +53,7 @@ jobs:
         apt-get install -y \
             cmake zip unzip \
             g++ libnss3-dev libnss3-tools \
-            openjdk-17-jdk libcommons-lang3-java libslf4j-java \
+            openjdk-${{ env.JAVA_VERSION }}-jdk libcommons-lang3-java libslf4j-java \
             junit5 libopentest4j-java maven
 
     - name: Build JSS with CMake
@@ -134,8 +137,6 @@ jobs:
   symbol-test:
     name: Symbol Test
     runs-on: ubuntu-latest
-    env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
     steps:
       - name: Clone repository
         uses: actions/checkout@v4

@@ -253,12 +253,6 @@ macro(jss_config_java)
     list(APPEND JSS_JAVAC_FLAGS "-sourcepath")
     list(APPEND JSS_JAVAC_FLAGS "${PROJECT_SOURCE_DIR}/base/src/main/java")
 
-    # Ensure we're compatible with JDK 17
-    list(APPEND JSS_JAVAC_FLAGS "-target")
-    list(APPEND JSS_JAVAC_FLAGS "17")
-    list(APPEND JSS_JAVAC_FLAGS "-source")
-    list(APPEND JSS_JAVAC_FLAGS "17")
-
     # Handle passed-in javac flags as well; assume they are valid.
     separate_arguments(PASSED_JAVAC_FLAGS UNIX_COMMAND "$ENV{JAVACFLAGS}")
     foreach(PASSED_JAVAC_FLAG ${PASSED_JAVAC_FLAGS})

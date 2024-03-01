@@ -23,21 +23,27 @@ jobs:
     inputs:
       scriptSource: inline
       script: |
-       import os
+        import os
 
-       value = os.getenv('BASE_IMAGE', 'registry.fedoraproject.org/fedora:latest')
-       print('BASE_IMAGE: {value}'.format(value=value))
-       print('##vso[task.setvariable variable=BASE_IMAGE]{value}'.format(value=value))
+        value = os.getenv('BASE_IMAGE', 'registry.fedoraproject.org/fedora:latest')
+        print('BASE_IMAGE: {value}'.format(value=value))
+        print('##vso[task.setvariable variable=BASE_IMAGE]{value}'.format(value=value))
+
+        value = os.getenv('JAVA_VERSION', '17')
+        print('JAVA_VERSION: {value}'.format(value=value))
+        print('##vso[task.setvariable variable=JAVA_VERSION]{value}'.format(value=value))
 
   - script: |
       docker build \
           --build-arg BASE_IMAGE=$BASE_IMAGE \
+          --build-arg JAVA_VERSION=$JAVA_VERSION \
           --target jss-base \
           --tag jss-base:latest \
           .
 
       docker run \
           --name runner \
+          -e JAVA_HOME=/usr/lib/jvm/java-$JAVA_VERSION-openjdk \
           --privileged \
           --detach \
           jss-base:latest
@@ -55,11 +61,42 @@ jobs:
       docker exec runner dnf install -y dnf-plugins-core rpm-build
       if [ -n "$COPR_REPO" ]; then docker exec runner dnf copr enable -y $COPR_REPO; fi
 
-      docker cp . runner:/root/src
-      docker exec -w /root/src runner dnf builddep -y --spec jss.spec
+      docker cp . runner:/root/jss
+
+      docker exec -w /root/jss runner \
+          ./build.sh \
+          --work-dir=build \
+          --java-version=$JAVA_VERSION \
+          spec
+
+      docker exec -w /root/jss runner \
+          dnf builddep \
+          -y \
+          --spec build/SPECS/jss.spec
     displayName: Install build dependencies
 
-  - script: docker exec -w /root/src runner ./build.sh
+  - script: |
+      echo "$JAVA_VERSION" > expected
+
+      JAVA_HOME=$(docker exec runner bash -c 'echo "$JAVA_HOME"')
+      echo "JAVA_HOME: $JAVA_HOME"
+
+      # check java command's major version
+      docker exec runner $JAVA_HOME/bin/java -version 2>&1 | tee output
+      sed -n 's/^openjdk version "\([^\.]*\).*$/\1/p' output > actual
+      diff expected actual
+
+      # check javac command's major version
+      docker exec runner $JAVA_HOME/bin/javac -version | tee output
+      sed -n 's/^javac \([^\.]*\).*$/\1/p' output > actual
+      diff expected actual
+    displayName: Check Java version
+
+  - script: |
+        docker exec -w /root/jss runner \
+          ./build.sh \
+          --java-version=$JAVA_VERSION \
+          dist
     displayName: Build JSS binaries, Javadoc, and run tests
 
 - job: BuildTest_apt
@@ -75,17 +112,33 @@ jobs:
   steps:
   - script: |
       docker exec -u 0 runner apt-get update
+      docker exec -u 0 runner apt-get install -y python3
+    displayName: Install Python
+
+  - task: PythonScript@0
+    displayName: Set environment variables
+    inputs:
+      pythonInterpreter: python3
+      scriptSource: inline
+      script: |
+        import os
+
+        value = os.getenv('JAVA_VERSION', '17')
+        print('JAVA_VERSION: {value}'.format(value=value))
+        print('##vso[task.setvariable variable=JAVA_VERSION]{value}'.format(value=value))
+
+  - script: |
       docker exec -u 0 runner apt-get install -y \
           cmake zip unzip \
           g++ libnss3-dev libnss3-tools \
-          openjdk-17-jdk libcommons-lang3-java libslf4j-java \
+          openjdk-$JAVA_VERSION-jdk libcommons-lang3-java libslf4j-java \
           junit5 libopentest4j-java
     displayName: Install build dependencies
 
   - script: ./build.sh
     displayName: Build JSS binaries, Javadoc, and run tests
     env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      JAVA_HOME: /usr/lib/jvm/java-$JAVA_VERSION-openjdk-amd64
 
 - job: SymbolTest
   pool:

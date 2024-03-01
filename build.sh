@@ -26,6 +26,7 @@ SHARE_DIR="/usr/share"
 
 CMAKE="cmake"
 
+JAVA_VERSION="17"
 JNI_DIR="/usr/lib/java"
 INSTALL_DIR=
 
@@ -52,31 +53,32 @@ usage() {
     echo "Usage: $SCRIPT_NAME [OPTIONS] <target>"
     echo
     echo "Options:"
-    echo "    --name=<name>          Package name (default: $NAME)."
-    echo "    --work-dir=<path>      Working directory (default: ~/build/$NAME)."
-    echo "    --prefix-dir=<path>    Prefix directory (default: $PREFIX_DIR)."
-    echo "    --include-dir=<path>   Include directory (default: $INCLUDE_DIR)."
-    echo "    --lib-dir=<path>       Library directory (default: $LIB_DIR)."
-    echo "    --sysconf-dir=<path>   System configuration directory (default: $SYSCONF_DIR)."
-    echo "    --share-dir=<path>     Share directory (default: $SHARE_DIR)."
-    echo "    --cmake=<path>         Path to CMake executable"
-    echo "    --java-home=<path>     Java home"
-    echo "    --jni-dir=<path>       JNI directory (default: $JNI_DIR)."
-    echo "    --install-dir=<path>   Installation directory."
-    echo "    --source-tag=<tag>     Generate RPM sources from a source tag."
-    echo "    --spec=<file>          Use the specified RPM spec (default: $SPEC_TEMPLATE)."
-    echo "    --version=<version>    Use the specified version."
-    echo "    --release=<release>    Use the specified release."
-    echo "    --with-timestamp       Append timestamp to release number."
-    echo "    --with-commit-id       Append commit ID to release number."
-    echo "    --dist=<name>          Distribution name (e.g. fc28)."
-    echo "    --without-java         Do not build Java binaries."
-    echo "    --without-native       Do not build native binaries."
-    echo "    --without-javadoc      Do not build Javadoc package."
-    echo "    --without-tests        Do not build tests package."
-    echo " -v,--verbose              Run in verbose mode."
-    echo "    --debug                Run in debug mode."
-    echo "    --help                 Show help message."
+    echo "    --name=<name>             Package name (default: $NAME)."
+    echo "    --work-dir=<path>         Working directory (default: ~/build/$NAME)."
+    echo "    --prefix-dir=<path>       Prefix directory (default: $PREFIX_DIR)."
+    echo "    --include-dir=<path>      Include directory (default: $INCLUDE_DIR)."
+    echo "    --lib-dir=<path>          Library directory (default: $LIB_DIR)."
+    echo "    --sysconf-dir=<path>      System configuration directory (default: $SYSCONF_DIR)."
+    echo "    --share-dir=<path>        Share directory (default: $SHARE_DIR)."
+    echo "    --cmake=<path>            Path to CMake executable"
+    echo "    --java-version=<version>  Java version (default: $JAVA_VERSION)"
+    echo "    --java-home=<path>        Java home"
+    echo "    --jni-dir=<path>          JNI directory (default: $JNI_DIR)."
+    echo "    --install-dir=<path>      Installation directory."
+    echo "    --source-tag=<tag>        Generate RPM sources from a source tag."
+    echo "    --spec=<file>             Use the specified RPM spec (default: $SPEC_TEMPLATE)."
+    echo "    --version=<version>       Use the specified version."
+    echo "    --release=<release>       Use the specified release."
+    echo "    --with-timestamp          Append timestamp to release number."
+    echo "    --with-commit-id          Append commit ID to release number."
+    echo "    --dist=<name>             Distribution name (e.g. fc28)."
+    echo "    --without-java            Do not build Java binaries."
+    echo "    --without-native          Do not build native binaries."
+    echo "    --without-javadoc         Do not build Javadoc package."
+    echo "    --without-tests           Do not build tests package."
+    echo " -v,--verbose                 Run in verbose mode."
+    echo "    --debug                   Run in debug mode."
+    echo "    --help                    Show help message."
     echo
     echo "Target:"
     echo "    dist     Build JSS binaries (default)."
@@ -178,6 +180,9 @@ generate_rpm_spec() {
         sed -i "s/# Patch: jss-VERSION-RELEASE.patch/Patch: $PATCH/g" "$SPEC_FILE"
     fi
 
+    # hard-code Java version
+    sed -i "s/^\(%global *java_version *\).*\$/\1$JAVA_VERSION/g" "$SPEC_FILE"
+
     # hard-code Javadoc option
     if [ "$WITH_JAVADOC" = false ] ; then
         # convert bcond_without into bcond_with such that Javadoc package is not built by default
@@ -225,6 +230,9 @@ while getopts v-: arg ; do
             ;;
         cmake=?*)
             CMAKE=$(readlink -f "$LONG_OPTARG")
+            ;;
+        java-version=?*)
+            JAVA_VERSION="$LONG_OPTARG"
             ;;
         java-home=?*)
             JAVA_HOME=$(readlink -f "$LONG_OPTARG")
@@ -283,7 +291,7 @@ while getopts v-: arg ; do
             break # "--" terminates argument processing
             ;;
         name* | work-dir* | prefix-dir* | include-dir* | lib-dir* | sysconf-dir* | share-dir* | cmake* | \
-        java-home* | jni-dir* | install-dir* | \
+        java-version* | java-home* | jni-dir* | install-dir* | \
         source-tag* | spec* | version* | release* | dist*)
             echo "ERROR: Missing argument for --$OPTARG option" >&2
             exit 1
@@ -322,6 +330,7 @@ if [ "$DEBUG" = true ] ; then
     echo "SYSCONF_DIR: $SYSCONF_DIR"
     echo "SHARE_DIR: $SHARE_DIR"
     echo "CMAKE: $CMAKE"
+    echo "JAVA_VERSION: $JAVA_VERSION"
     echo "JAVA_HOME: $JAVA_HOME"
     echo "JNI_DIR: $JNI_DIR"
     echo "INSTALL_DIR: $INSTALL_DIR"
