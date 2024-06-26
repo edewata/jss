@@ -51,6 +51,9 @@ ExclusiveArch: %{java_arches}
 ExcludeArch: i686
 %endif
 
+# Don't bundle dependencies unless --with deps is specified.
+%bcond_with deps
+
 ################################################################################
 # Java
 ################################################################################
@@ -106,6 +109,8 @@ BuildRequires:  nss-tools >= 3.66
 
 BuildRequires:  %{java_devel}
 BuildRequires:  maven-local
+BuildRequires:  mvn(org.apache.maven.plugins:maven-dependency-plugin)
+BuildRequires:  mvn(org.apache.maven.plugins:maven-assembly-plugin)
 BuildRequires:  mvn(org.apache.commons:commons-lang3)
 BuildRequires:  mvn(org.slf4j:slf4j-api)
 BuildRequires:  mvn(org.slf4j:slf4j-jdk14)
@@ -267,6 +272,12 @@ export CFLAGS
 
 # Check if we're in FIPS mode
 modutil -dbdir /etc/pki/nssdb -chkfips true | grep -q enabled && export FIPS_ENABLED=1
+
+%if %{with deps}
+#xmvn dependency:copy-dependencies
+#xmvn assembly:single
+#ls -la target/dependencies
+%endif
 
 # build Java code, run Java tests, and build Javadoc with Maven
 %mvn_build %{!?with_tests:-f} %{!?with_javadoc:-j}

@@ -40,6 +40,8 @@ WITH_TIMESTAMP=
 WITH_COMMIT_ID=
 DIST=
 
+WITH_DEPS=false
+
 WITH_JAVA=true
 WITH_NATIVE=true
 WITH_JAVADOC=true
@@ -70,6 +72,7 @@ usage() {
     echo "    --with-timestamp       Append timestamp to release number."
     echo "    --with-commit-id       Append commit ID to release number."
     echo "    --dist=<name>          Distribution name (e.g. fc28)."
+    echo "    --with-deps            Bundle dependencies."
     echo "    --without-java         Do not build Java binaries."
     echo "    --without-native       Do not build native binaries."
     echo "    --without-javadoc      Do not build Javadoc package."
@@ -178,6 +181,12 @@ generate_rpm_spec() {
         sed -i "s/# Patch: jss-VERSION-RELEASE.patch/Patch: $PATCH/g" "$SPEC_FILE"
     fi
 
+    # hard-code deps bundling option
+    if [ "$WITH_DEPS" = true ] ; then
+        # convert bcond_with into bcond_without such that deps are bundled by default
+        sed -i "s/%\(bcond_with *deps\)\$/# \1\n%bcond_without deps/g" "$SPEC_FILE"
+    fi
+
     # hard-code Javadoc option
     if [ "$WITH_JAVADOC" = false ] ; then
         # convert bcond_without into bcond_with such that Javadoc package is not built by default
@@ -255,6 +264,9 @@ while getopts v-: arg ; do
             ;;
         dist=?*)
             DIST="$LONG_OPTARG"
+            ;;
+        with-deps)
+            WITH_DEPS=true
             ;;
         without-java)
             WITH_JAVA=false

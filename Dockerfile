@@ -6,6 +6,7 @@
 
 ARG BASE_IMAGE="registry.fedoraproject.org/fedora:latest"
 ARG COPR_REPO=""
+ARG BUILD_OPTS=""
 
 ################################################################################
 FROM $BASE_IMAGE AS jss-base
@@ -46,11 +47,13 @@ RUN dnf builddep -y --spec jss.spec
 ################################################################################
 FROM jss-builder-deps AS jss-builder
 
+ARG BUILD_OPTS
+
 # Import JSS source
 COPY . /root/jss/
 
 # Build JSS packages
-RUN ./build.sh --work-dir=build rpm
+RUN ./build.sh --work-dir=build $BUILD_OPTS rpm
 
 ################################################################################
 FROM alpine:latest AS jss-dist

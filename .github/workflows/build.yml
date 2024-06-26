@@ -31,6 +31,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ env.BASE_IMAGE }}
             COPR_REPO=${{ env.COPR_REPO }}
+            BUILD_OPTS=--with-deps
           tags: jss-deps
           target: jss-deps
           cache-to: type=local,dest=/tmp/.buildx-cache
@@ -43,6 +44,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ env.BASE_IMAGE }}
             COPR_REPO=${{ env.COPR_REPO }}
+            BUILD_OPTS=--with-deps
           tags: jss-builder-deps
           target: jss-builder-deps
           cache-to: type=local,dest=/tmp/.buildx-cache
@@ -55,6 +57,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ env.BASE_IMAGE }}
             COPR_REPO=${{ env.COPR_REPO }}
+            BUILD_OPTS=--with-deps
           tags: jss-builder
           target: jss-builder
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -67,6 +70,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ env.BASE_IMAGE }}
             COPR_REPO=${{ env.COPR_REPO }}
+            BUILD_OPTS=--with-deps
           tags: jss-dist
           target: jss-dist
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -79,6 +83,7 @@ jobs:
           build-args: |
             BASE_IMAGE=${{ env.BASE_IMAGE }}
             COPR_REPO=${{ env.COPR_REPO }}
+            BUILD_OPTS=--with-deps
           tags: jss-runner
           target: jss-runner
           cache-from: type=local,src=/tmp/.buildx-cache
