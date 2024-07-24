@@ -44,6 +44,7 @@ WITH_JAVA=true
 WITH_NATIVE=true
 WITH_JAVADOC=true
 WITH_TESTS=true
+WITH_INTERNET=false
 
 VERBOSE=
 DEBUG=
@@ -74,6 +75,7 @@ usage() {
     echo "    --without-native       Do not build native binaries."
     echo "    --without-javadoc      Do not build Javadoc package."
     echo "    --without-tests        Do not build tests package."
+    echo "    --with-internet        Test with internet."
     echo " -v,--verbose              Run in verbose mode."
     echo "    --debug                Run in debug mode."
     echo "    --help                 Show help message."
@@ -268,6 +270,9 @@ while getopts v-: arg ; do
         without-tests)
             WITH_TESTS=false
             ;;
+        with-internet)
+            WITH_INTERNET=true
+            ;;
         verbose)
             VERBOSE=true
             ;;
@@ -405,6 +410,10 @@ if [ "$BUILD_TARGET" = "dist" ] ; then
 
     if [ "$WITH_TESTS" = false ] ; then
         OPTIONS+=(-DWITH_TESTS=FALSE)
+    fi
+
+    if [ "$WITH_INTERNET" = true ] ; then
+        OPTIONS+=(-DWITH_INTERNET=TRUE)
     fi
 
     $CMAKE "${OPTIONS[@]}"

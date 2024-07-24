@@ -39,9 +39,9 @@ if(NOT (DEFINED CMAKE_BUILD_TYPE))
 endif()
 
 if (DEFINED ENV{WITH_INTERNET})
-    set(TEST_WITH_INTERNET_ENV TRUE)
+    set(WITH_INTERNET_ENV TRUE)
 endif()
-option(TEST_WITH_INTERNET "When enabled, runs various tests which require an internet connection. " ${TEST_WITH_INTERNET_ENV})
+option(WITH_INTERNET "When enabled, runs various tests which require an internet connection. " ${WITH_INTERNET_ENV})
 
 option(WITH_JAVA "Build Java binaries." TRUE)
 option(WITH_NATIVE "Build native binaries." TRUE)
