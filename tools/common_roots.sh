@@ -28,11 +28,16 @@ mkdir -p "$nssdb"
 echo "" > "$nssdb/password.txt"
 certutil -N -d "$nssdb" -f "$nssdb/password.txt"
 
-trust extract --format=pem-bundle  --filter=ca-anchors "$nssdb/complete.pem"
+#trust extract --format=pem-bundle  --filter=ca-anchors "$nssdb/complete.pem"
 
 # From: https://serverfault.com/questions/391396/how-to-split-a-pem-file
-csplit -f "$nssdb/individual-" "$nssdb/complete.pem" '/-----BEGIN CERTIFICATE-----/' '{*}'
+#csplit -f "$nssdb/individual-" "$nssdb/complete.pem" '/-----BEGIN CERTIFICATE-----/' '{*}'
 
-for cert in "$nssdb"/individual*; do
-    certutil -A -a -i "$cert" -n "$cert" -t CT,C,C -d "$nssdb" -f "$nssdb/password.txt"
-done
+#for cert in "$nssdb"/individual*; do
+#    certutil -A -a -i "$cert" -n "$cert" -t CT,C,C -d "$nssdb" -f "$nssdb/password.txt"
+#done
+
+ls -la /usr/lib64/pkcs11
+echo | modutil -dbdir "$nssdb" -add p11-kit-trust -libfile /usr/lib64/pkcs11/p11-kit-trust.so -force
+
+certutil -L -d "$nssdb"

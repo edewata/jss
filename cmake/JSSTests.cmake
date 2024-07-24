@@ -54,7 +54,7 @@ macro(jss_tests)
     )
 
     # NSS DB for internet connected tests; imports global root CA certs.
-    if(TEST_WITH_INTERNET)
+    if(WITH_INTERNET)
         jss_test_exec(
             NAME "Clean_Internet_Setup_DBs"
             COMMAND "cmake" "-E" "remove_directory" "${RESULTS_NSSDB_INTERNET_OUTPUT_DIR}"
@@ -64,7 +64,7 @@ macro(jss_tests)
             COMMAND "${CMAKE_SOURCE_DIR}/tools/common_roots.sh" "${RESULTS_NSSDB_INTERNET_OUTPUT_DIR}"
             DEPENDS "Clean_Internet_Setup_DBs"
         )
-    endif()
+    endif(WITH_INTERNET)
 
     jss_test_exec(
         NAME "TestBufferPRFD"
@@ -442,7 +442,7 @@ macro(jss_tests)
         COMMAND "org.mozilla.jss.tests.TestRunner" "org.mozilla.jss.tests.PrintableConverterTest"
     )
 
-    if(TEST_WITH_INTERNET)
+    if(WITH_INTERNET)
         jss_test_java(
             NAME "BadSSL"
             COMMAND "org.mozilla.jss.tests.BadSSL" "${RESULTS_NSSDB_INTERNET_OUTPUT_DIR}"
@@ -455,7 +455,7 @@ macro(jss_tests)
             DEPENDS "Import_Internet_Certs"
             MODE "INTERNET"
         )
-    endif()
+    endif(WITH_INTERNET)
 
     # For compliance with several existing clients
     add_custom_target(
@@ -509,9 +509,9 @@ function(jss_test_java)
     elseif(NOT TEST_JAVA_MODE STREQUAL "NONE")
         list(APPEND EXEC_COMMAND "-Djava.security.properties=${CONFIG_OUTPUT_DIR}/java.security")
     endif()
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    #if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         list(APPEND EXEC_COMMAND "-Djava.util.logging.config.file=${PROJECT_SOURCE_DIR}/tools/logging.properties")
-    endif()
+    #endif()
     set(EXEC_COMMAND "${EXEC_COMMAND};${TEST_JAVA_COMMAND}")
 
     if(TEST_JAVA_DEPENDS)
