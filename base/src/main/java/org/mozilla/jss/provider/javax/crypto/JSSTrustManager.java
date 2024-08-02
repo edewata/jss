@@ -30,6 +30,7 @@ import javax.net.ssl.X509TrustManager;
 
 import org.mozilla.jss.CryptoManager;
 import org.mozilla.jss.NotInitializedException;
+import org.mozilla.jss.crypto.CryptoStore;
 import org.mozilla.jss.netscape.security.util.Cert;
 import org.mozilla.jss.pkcs11.PK11Cert;
 import org.slf4j.Logger;
@@ -52,8 +53,8 @@ public class JSSTrustManager implements X509TrustManager {
 
         logger.debug("JSSTrustManager: checkCertChain(" + keyUsage + ")");
 
-        // sort cert chain from root to leaf
-        certChain = Cert.sortCertificateChain(certChain);
+        // sort cert chain from leaf to root
+        certChain = Cert.sortCertificateChain(certChain, true);
 
         for (X509Certificate cert : certChain) {
             logger.debug("JSSTrustManager:  - " + cert.getSubjectX500Principal());
@@ -62,7 +63,7 @@ public class JSSTrustManager implements X509TrustManager {
         // get CA certs
         X509Certificate[] caCerts = getAcceptedIssuers();
 
-        // validating cert chain from root to leaf
+        // validating cert chain from leaf to root
         for (int i = 0; i < certChain.length; i++) {
 
             X509Certificate cert = certChain[i];
@@ -75,49 +76,26 @@ public class JSSTrustManager implements X509TrustManager {
                 usage = null;
             }
 
-            checkCert(cert, caCerts, usage);
-
-            // use the current cert as the CA cert for the next cert in the chain
-            caCerts = new X509Certificate[] { cert };
-        }
-    }
-
-    public void checkCert(X509Certificate cert, X509Certificate[] caCerts, String keyUsage) throws Exception {
-
-        logger.debug("JSSTrustManager: Checking cert:");
-        logger.debug("JSSTrustManager: - subject: " + cert.getSubjectX500Principal());
-        logger.debug("JSSTrustManager: - issuer: " + cert.getIssuerX500Principal());
-
-        boolean[] aki = cert.getIssuerUniqueID();
-        logger.debug("JSSTrustManager: - AKI: " + Arrays.toString(aki));
-
-        X509Certificate issuer = null;
-        for (X509Certificate caCert : caCerts) {
-
-            logger.debug("JSSTrustManager: Checking against CA cert:");
-            logger.debug("JSSTrustManager: - subject: " + caCert.getSubjectX500Principal());
-
-            boolean[] ski = caCert.getSubjectUniqueID();
-            logger.debug("JSSTrustManager: - SKI: " + Arrays.toString(ski));
-
-            try {
-                cert.verify(caCert.getPublicKey(), "Mozilla-JSS");
-                issuer = caCert;
-                break;
-            } catch (Exception e) {
-                logger.debug("JSSTrustManager: " + e.getClass().getName() + ": " + e.getMessage());
+            boolean done = checkCert(cert, caCerts, usage);
+            if (done) {
+                return;
             }
         }
 
-        if (issuer == null) {
-            throw new CertificateException("Unable to validate signature: " + cert.getSubjectX500Principal());
-        }
+        X509Certificate cert = certChain[0];
 
-        logger.debug("JSSTrustManager: cert signed by " + issuer.getSubjectX500Principal());
+        logger.debug("JSSTrustManager: Unable to validate issuer: " + cert.getSubjectX500Principal());
+        throw new CertificateException("Unable to validate signature: " + cert.getSubjectX500Principal());
+    }
 
-        logger.debug("JSSTrustManager: checking validity range:");
-        logger.debug("JSSTrustManager:  - not before: " + cert.getNotBefore());
-        logger.debug("JSSTrustManager:  - not after: " + cert.getNotAfter());
+    public boolean checkCert(X509Certificate cert, X509Certificate[] caCerts, String keyUsage) throws Exception {
+
+        logger.debug("JSSTrustManager: Checking " + cert.getClass().getName() + ":");
+        logger.debug("JSSTrustManager: - serial: 0x" + cert.getSerialNumber().toString(16));
+        logger.debug("JSSTrustManager: - subject: " + cert.getSubjectX500Principal());
+        logger.debug("JSSTrustManager: - issuer: " + cert.getIssuerX500Principal());
+        logger.debug("JSSTrustManager: - not before: " + cert.getNotBefore());
+        logger.debug("JSSTrustManager: - not after: " + cert.getNotAfter());
         cert.checkValidity();
 
         if (keyUsage != null) {
@@ -156,6 +134,55 @@ public class JSSTrustManager implements X509TrustManager {
                 throw new CertificateException(msg);
             }
         }
+
+        CryptoManager cm = CryptoManager.getInstance();
+        CryptoStore cs = cm.getInternalCryptoToken().getCryptoStore();
+        org.mozilla.jss.crypto.X509Certificate jssCert = cs.findCert(cert.getEncoded());
+
+        logger.debug("JSSTrustManager: - JSS cert: " + jssCert);
+        for (X509Certificate c : cs.getCertificates()) {
+            logger.debug("JSSTrustManager:   - 0x" + c.getSerialNumber());
+        }
+
+        if (jssCert != null) {
+            logger.debug("JSSTrustManager: - nickname: " + jssCert.getNickname());
+            logger.debug("JSSTrustManager: - trust flags: " + jssCert.getTrustFlags());
+
+            boolean trustedPeer = org.mozilla.jss.crypto.X509Certificate.isTrustFlagEnabled(
+                    org.mozilla.jss.crypto.X509Certificate.TRUSTED_PEER,
+                    jssCert.getSSLTrust());
+
+            if (trustedPeer) {
+                logger.debug("JSSTrustManager: Trusted cert: " + cert.getSubjectX500Principal());
+                return true;
+            }
+        }
+
+        // if cert is not trusted peer, check against trusted CA
+
+        boolean[] aki = cert.getIssuerUniqueID();
+        logger.debug("JSSTrustManager: - AKI: " + Arrays.toString(aki));
+
+        for (X509Certificate caCert : caCerts) {
+
+            logger.debug("JSSTrustManager: Checking against CA cert:");
+            logger.debug("JSSTrustManager: - subject: " + caCert.getSubjectX500Principal());
+
+            boolean[] ski = caCert.getSubjectUniqueID();
+            logger.debug("JSSTrustManager: - SKI: " + Arrays.toString(ski));
+
+            try {
+                cert.verify(caCert.getPublicKey(), "Mozilla-JSS");
+
+                logger.debug("JSSTrustManager: cert signed by " + caCert.getSubjectX500Principal());
+                return true;
+
+            } catch (Exception e) {
+                logger.debug("JSSTrustManager: " + e.getClass().getName() + ": " + e.getMessage());
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -219,6 +246,7 @@ public class JSSTrustManager implements X509TrustManager {
             throw new RuntimeException(e);
         }
 
+        logger.debug("JSSTrustManager: issuers: " + caCerts.size());
         return caCerts.toArray(new X509Certificate[caCerts.size()]);
     }
 }

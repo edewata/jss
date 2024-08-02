@@ -130,7 +130,10 @@ jobs:
       - name: Check client with untrusted server cert
         run: |
           # run client but don't trust the cert
-          echo n | docker exec -i client pki -U https://pki.example.com:8443 info \
+          echo n | docker exec -i client pki \
+              -D org.dogtagpki.client.socketFactory=org.dogtagpki.client.NonBlockingSocketFactory \
+              -U https://pki.example.com:8443 \
+              info \
               > >(tee stdout) 2> >(tee stderr >&2) || true
 
           # check stdout
@@ -143,8 +146,7 @@ jobs:
           # check stderr
           cat > expected << EOF
           WARNING: UNTRUSTED ISSUER encountered on 'CN=pki.example.com,OU=pki-tomcat,O=EXAMPLE' indicates a non-trusted CA cert 'CN=CA Signing Certificate,OU=pki-tomcat,O=EXAMPLE'
-          Trust this certificate (y/N)? SEVERE: FATAL: SSL alert sent: BAD_CERTIFICATE
-          IOException: Unable to write to socket: Failed to write to socket: (-5987) Invalid function argument.
+          Trust this certificate (y/N)? IOException: Unable to write to socket: Unable to validate CN=pki.example.com, OU=pki-tomcat, O=EXAMPLE: Untrusted server: CN=pki.example.com, OU=pki-tomcat, O=EXAMPLE
           EOF
 
           diff expected stderr
@@ -157,7 +159,10 @@ jobs:
       - name: Check client with untrusted server cert with wrong hostname
         run: |
           # run client with wrong hostname
-          echo n | docker exec -i client pki -U https://server.example.com:8443 info \
+          echo n | docker exec -i client pki \
+              -D org.dogtagpki.client.socketFactory=org.dogtagpki.client.NonBlockingSocketFactory \
+              -U https://server.example.com:8443 \
+              info \
               > >(tee stdout) 2> >(tee stderr >&2) || true
 
           # check stdout
@@ -171,8 +176,7 @@ jobs:
           cat > expected << EOF
           WARNING: BAD_CERT_DOMAIN encountered on 'CN=pki.example.com,OU=pki-tomcat,O=EXAMPLE' indicates a common-name mismatch
           WARNING: UNTRUSTED ISSUER encountered on 'CN=pki.example.com,OU=pki-tomcat,O=EXAMPLE' indicates a non-trusted CA cert 'CN=CA Signing Certificate,OU=pki-tomcat,O=EXAMPLE'
-          Trust this certificate (y/N)? SEVERE: FATAL: SSL alert sent: BAD_CERTIFICATE
-          IOException: Unable to write to socket: Failed to write to socket: (-12276) Unable to communicate securely with peer: requested domain name does not match the server's certificate.
+          Trust this certificate (y/N)? IOException: Unable to write to socket: Unable to validate CN=pki.example.com, OU=pki-tomcat, O=EXAMPLE: Untrusted server: CN=pki.example.com, OU=pki-tomcat, O=EXAMPLE
           EOF
 
           diff expected stderr
@@ -180,7 +184,10 @@ jobs:
       - name: Check client with newly trusted server cert
         run: |
           # run client and trust the cert
-          echo y | docker exec -i client pki -U https://pki.example.com:8443 info \
+          echo y | docker exec -i client pki \
+              -D org.dogtagpki.client.socketFactory=org.dogtagpki.client.NonBlockingSocketFactory \
+              -U https://pki.example.com:8443 \
+              info \
               > >(tee stdout) 2> >(tee stderr >&2) || true
 
           # check stdout
@@ -227,7 +234,10 @@ jobs:
       - name: Check client with trusted server cert with wrong hostname
         run: |
           # run client with wrong hostname
-          docker exec client pki -U https://server.example.com:8443 info \
+          docker exec client pki \
+              -D org.dogtagpki.client.socketFactory=org.dogtagpki.client.NonBlockingSocketFactory \
+              -U https://server.example.com:8443 \
+              info \
               > >(tee stdout) 2> >(tee stderr >&2) || true
 
           # check stdout
@@ -249,7 +259,10 @@ jobs:
       - name: Check client with already trusted server cert
         run: |
           # run client with correct hostname
-          docker exec client pki -U https://pki.example.com:8443 info \
+          docker exec client pki \
+              -D org.dogtagpki.client.socketFactory=org.dogtagpki.client.NonBlockingSocketFactory \
+              -U https://pki.example.com:8443 \
+              info \
               > >(tee stdout) 2> >(tee stderr >&2) || true
 
           # check stdout
