@@ -5,9 +5,9 @@ import java.io.IOException;
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 
 import org.mozilla.jss.CryptoManager;
+import org.mozilla.jss.provider.javax.crypto.JSSNativeTrustManager;
 import org.mozilla.jss.ssl.javax.JSSSocket;
 import org.mozilla.jss.ssl.javax.JSSSocketFactory;
 
@@ -26,11 +26,6 @@ public class BadSSL {
     public static KeyManager[] getKMs() throws Exception {
         KeyManagerFactory kmf = KeyManagerFactory.getInstance("NssX509");
         return kmf.getKeyManagers();
-    }
-
-    public static TrustManager[] getTMs() throws Exception {
-        TrustManagerFactory tmf = TrustManagerFactory.getInstance("NssX509");
-        return tmf.getTrustManagers();
     }
 
     public static void main(String[] args) throws Exception {
@@ -53,8 +48,7 @@ public class BadSSL {
         }
 
         ctx = javax.net.ssl.SSLContext.getInstance("TLS", "Mozilla-JSS");
-        //ctx.init(getKMs(), new TrustManager[] { new JSSNativeTrustManager() }, null);
-        ctx.init(getKMs(), getTMs(), null);
+        ctx.init(getKMs(), new TrustManager[] { new JSSNativeTrustManager() }, null);
         jsf = (JSSSocketFactory) ctx.getSocketFactory();
 
         // Test cases which should fail due to various certificate errors.

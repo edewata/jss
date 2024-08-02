@@ -114,7 +114,7 @@ jobs:
 
     - name: Build with CMake
       run: |
-        docker exec jss ./build.sh --with-internet
+        docker exec jss ./build.sh
 
     - name: Build with Maven
       run: |
