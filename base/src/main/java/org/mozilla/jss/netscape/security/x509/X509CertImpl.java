@@ -368,26 +368,12 @@ public class X509CertImpl extends X509Certificate
         sigVerf = Signature.getInstance(algId.getName(), sigProvider);
         sigVerf.initVerify(key);
 
-        try (DerOutputStream tmp = new DerOutputStream()) {
-
-            info.encode(tmp);
-            sigVerf.update(tmp.toByteArray());
-
-            if (!sigVerf.verify(signature)) {
-                throw new SignatureException("Signature does not match");
-            }
-
-        } catch (IOException e) {
-            throw new CertificateException(e);
-        }
-/*
         byte[] rawCert = info.getEncodedInfo();
         sigVerf.update(rawCert, 0, rawCert.length);
 
         if (!sigVerf.verify(signature)) {
             throw new SignatureException("Signature does not match");
         }
-*/
     }
 
     /**
