@@ -1,10 +1,13 @@
 package org.mozilla.jss.nss;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.mozilla.jss.crypto.X509Certificate;
 import org.mozilla.jss.pkcs11.PK11Cert;
+import org.mozilla.jss.ssl.SSLAlertDescription;
 import org.mozilla.jss.ssl.SSLAlertEvent;
+import org.mozilla.jss.ssl.SSLAlertLevel;
 import org.mozilla.jss.ssl.SSLHandshakeCompletedEvent;
 import org.mozilla.jss.ssl.SSLSocketListener;
 import org.mozilla.jss.util.GlobalRefProxy;
@@ -13,11 +16,16 @@ public class SSLFDProxy extends PRFDProxy implements SSLSocketListener {
     public PK11Cert clientCert;
     public GlobalRefProxy globalRef;
 
+    // inboundAlerts and outboundAlerts do not seem to be working properly
+    // TODO: investigate the problem
     public ArrayList<SSLAlertEvent> inboundAlerts;
     public int inboundOffset;
 
     public ArrayList<SSLAlertEvent> outboundAlerts;
     public int outboundOffset;
+
+    // temporary workaround for inboundAlerts and outboundAlerts
+    public List<SSLSocketListener> socketListeners = new ArrayList<>();
 
     public boolean needCertValidation;
     public boolean needBadCertValidation;
@@ -55,6 +63,14 @@ public class SSLFDProxy extends PRFDProxy implements SSLSocketListener {
         }
     }
 
+    public void addSocketListener(SSLSocketListener socketListener) {
+        socketListeners.add(socketListener);
+    }
+
+    public void removeSocketListener(SSLSocketListener socketListener) {
+        socketListeners.remove(socketListener);
+    }
+
     public int invokeCertAuthHandler() {
         return certAuthHandler.check(this);
     }
@@ -65,16 +81,63 @@ public class SSLFDProxy extends PRFDProxy implements SSLSocketListener {
 
     @Override
     public void handshakeCompleted(SSLHandshakeCompletedEvent event) {
+
         handshakeComplete = true;
+
+        for (SSLSocketListener socketListener : socketListeners) {
+            socketListener.handshakeCompleted(event);
+        }
     }
 
     @Override
     public void alertReceived(SSLAlertEvent event) {
+
+        int intLevel = event.getLevel();
+        SSLAlertLevel level = SSLAlertLevel.valueOf(intLevel);
+
+        int intDescription = event.getDescription();
+        SSLAlertDescription description = SSLAlertDescription.valueOf(intDescription);
+
+        System.err.println("SEVERE: " + level + ": SSL alert received: " + description);
+
+        // Ideally SSL alert events should be added to inboundAlerts,
+        // then JSSEngine will pass them to socket listeners. However,
+        // currently some events are missing, so this mechanism is
+        // temporarily disabled.
+        //
         inboundAlerts.add(event);
+
+        // As a workaround, call socket listeners directly.
+        for (SSLSocketListener socketListener : socketListeners) {
+            //socketListener.alertReceived(event);
+        }
+
+        // TODO: Investigate the above problem.
     }
 
     @Override
     public void alertSent(SSLAlertEvent event) {
+
+        int intLevel = event.getLevel();
+        SSLAlertLevel level = SSLAlertLevel.valueOf(intLevel);
+
+        int intDescription = event.getDescription();
+        SSLAlertDescription description = SSLAlertDescription.valueOf(intDescription);
+
+        System.err.println("SEVERE: " + level + ": SSL alert sent: " + description);
+
+        // Ideally SSL alert events should be added to outboundAlerts,
+        // then JSSEngine will pass them to socket listeners. However,
+        // currently some events are missing, so this mechanism is
+        // temporarily disabled.
+        //
         outboundAlerts.add(event);
+
+        // As a workaround, call socket listeners directly.
+        for (SSLSocketListener socketListener : socketListeners) {
+            //socketListener.alertSent(event);
+        }
+
+        // TODO: Investigate the above problem.
     }
 }
