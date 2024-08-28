@@ -105,11 +105,11 @@ public class SSLFDProxy extends PRFDProxy implements SSLSocketListener {
         // currently some events are missing, so this mechanism is
         // temporarily disabled.
         //
-        inboundAlerts.add(event);
+        //inboundAlerts.add(event);
 
         // As a workaround, call socket listeners directly.
         for (SSLSocketListener socketListener : socketListeners) {
-            //socketListener.alertReceived(event);
+            socketListener.alertReceived(event);
         }
 
         // TODO: Investigate the above problem.
@@ -131,11 +131,11 @@ public class SSLFDProxy extends PRFDProxy implements SSLSocketListener {
         // currently some events are missing, so this mechanism is
         // temporarily disabled.
         //
-        outboundAlerts.add(event);
+        //outboundAlerts.add(event);
 
         // As a workaround, call socket listeners directly.
         for (SSLSocketListener socketListener : socketListeners) {
-            //socketListener.alertSent(event);
+            socketListener.alertSent(event);
         }
 
         // TODO: Investigate the above problem.

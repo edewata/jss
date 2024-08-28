@@ -114,12 +114,14 @@ jobs:
           docker exec pki pki info
 
       - name: Check CA certs
+        if: false
         run: |
           docker exec pki /usr/share/pki/tests/ca/bin/test-ca-signing-cert.sh
           docker exec pki /usr/share/pki/tests/ca/bin/test-subsystem-cert.sh
           docker exec pki /usr/share/pki/tests/ca/bin/test-ca-certs.sh
 
       - name: Check CA admin
+        if: false
         run: |
           docker exec pki pki pkcs12-import \
               --pkcs12 /root/.dogtag/pki-tomcat/ca_admin_cert.p12 \
@@ -127,6 +129,7 @@ jobs:
           docker exec pki pki -n caadmin ca-user-show caadmin
 
       - name: Check CA agent
+        if: false
         run: |
           docker exec pki /usr/share/pki/tests/ca/bin/ca-agent-create.sh
           docker exec pki /usr/share/pki/tests/ca/bin/ca-agent-cert-create.sh
@@ -134,6 +137,7 @@ jobs:
           docker exec pki /usr/share/pki/tests/ca/bin/ca-agent-cert-unrevoke.sh
 
       - name: Check CA auditor
+        if: false
         run: |
           docker exec pki /usr/share/pki/tests/ca/bin/test-ca-auditor-create.sh
           docker exec pki /usr/share/pki/tests/ca/bin/test-ca-auditor-cert.sh

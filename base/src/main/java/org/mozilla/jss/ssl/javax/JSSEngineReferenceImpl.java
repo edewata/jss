@@ -982,6 +982,8 @@ public class JSSEngineReferenceImpl extends JSSEngine {
         debug("JSSEngine: Checking inbound and outbound SSL Alerts. Have " + ssl_fd.inboundAlerts.size() + " inbound and " + ssl_fd.outboundAlerts.size() + " outbound alerts.");
 
         // Prefer inbound alerts to outbound alerts.
+        System.err.println("JSSEngine: inbound SSL alerts: " + ssl_fd.inboundAlerts.size());
+        System.err.println("JSSEngine: inbound offset: " + ssl_fd.inboundOffset);
         while (ssl_fd.inboundOffset < ssl_fd.inboundAlerts.size()) {
             SSLAlertEvent event = ssl_fd.inboundAlerts.get(ssl_fd.inboundOffset);
             ssl_fd.inboundOffset += 1;
@@ -1005,6 +1007,8 @@ public class JSSEngineReferenceImpl extends JSSEngine {
             }
         }
 
+        System.err.println("JSSEngine: outbound SSL alerts: " + ssl_fd.outboundAlerts.size());
+        System.err.println("JSSEngine: outbound offset: " + ssl_fd.outboundOffset);
         while (ssl_fd.outboundOffset < ssl_fd.outboundAlerts.size()) {
             SSLAlertEvent event = ssl_fd.outboundAlerts.get(ssl_fd.outboundOffset);
             ssl_fd.outboundOffset += 1;
@@ -1031,18 +1035,19 @@ public class JSSEngineReferenceImpl extends JSSEngine {
     }
 
     private void updateHandshakeState() {
-        debug("JSSEngine: updateHandshakeState()");
+        System.err.println("JSSEngine: updateHandshakeState()");
         // If we've previously seen an exception, we should just return
         // here; there's already an alert on the wire, so there's no point
         // in checking for new ones and/or stepping the handshake: it has
         // already failed.
         if (seen_exception) {
+            System.err.println("JSSEngine.updateHandshakeState() - seen exception");
             return;
         }
 
         // If we're already done, we should check for SSL ALerts.
         if (!step_handshake && handshake_state == SSLEngineResult.HandshakeStatus.NOT_HANDSHAKING) {
-            debug("JSSEngine.updateHandshakeState() - not handshaking");
+            System.err.println("JSSEngine.updateHandshakeState() - not handshaking");
             unknown_state_count = 0;
 
             ssl_exception = checkSSLAlerts();
@@ -1054,7 +1059,7 @@ public class JSSEngineReferenceImpl extends JSSEngine {
         // NOT_HANDSHAKING. Now is also a good time to check for any
         // alerts.
         if (!step_handshake && handshake_state == SSLEngineResult.HandshakeStatus.FINISHED) {
-            debug("JSSEngine.updateHandshakeState() - FINISHED to NOT_HANDSHAKING");
+            System.err.println("JSSEngine.updateHandshakeState() - FINISHED to NOT_HANDSHAKING");
 
             // Because updateHandshakeState() gets called multiple times within
             // a single wrap/unwrap invocation, we need to wait for the FINISHED
@@ -1075,7 +1080,7 @@ public class JSSEngineReferenceImpl extends JSSEngine {
 
         // Since we're not obviously done handshaking, and the last time we
         // were called, we were still handshaking, step the handshake.
-        debug("JSSEngine.updateHandshakeState() - forcing handshake");
+        System.err.println("JSSEngine.updateHandshakeState() - forcing handshake");
         if (SSL.ForceHandshake(ssl_fd) == SSL.SECFailure) {
             int error_value = PR.GetError();
 
@@ -1196,7 +1201,7 @@ public class JSSEngineReferenceImpl extends JSSEngine {
 
     @Override
     public SSLEngineResult unwrap(ByteBuffer src, ByteBuffer[] dsts, int offset, int length) throws IllegalArgumentException, SSLException {
-        debug("JSSEngine: unwrap(ssl_fd=" + ssl_fd + ")");
+        System.err.println("JSSEngine: unwrap(ssl_fd=" + ssl_fd + ")");
 
         // In this method, we're taking the network wire contents of src and
         // passing them as the read side of our buffer. If there's any data
@@ -1472,7 +1477,7 @@ public class JSSEngineReferenceImpl extends JSSEngine {
 
     @Override
     public SSLEngineResult wrap(ByteBuffer[] srcs, int offset, int length, ByteBuffer dst) throws IllegalArgumentException, SSLException {
-        debug("JSSEngine: wrap(ssl_fd=" + ssl_fd + ")");
+        System.err.println("JSSEngine: wrap(ssl_fd=" + ssl_fd + ")");
         // In this method, we're taking the application data from the various
         // srcs and writing it to the remote peer (via ssl_fd). If there's any
         // data for us to send to the remote peer, we place it in dst.
@@ -1561,9 +1566,9 @@ public class JSSEngineReferenceImpl extends JSSEngine {
             this_src_write = writeData(srcs, offset, length);
             if (this_src_write > 0) {
                 app_data += this_src_write;
-                debug("JSSEngine.wrap(): wrote " + this_src_write + " from srcs to buffer.");
+                System.err.println("JSSEngine.wrap(): wrote " + this_src_write + " from srcs to buffer.");
             } else {
-                debug("JSSEngine.wrap(): not writing from srcs to buffer: this_src_write=" + this_src_write);
+                System.err.println("JSSEngine.wrap(): not writing from srcs to buffer: this_src_write=" + this_src_write);
             }
 
             if (dst != null) {
@@ -1580,15 +1585,17 @@ public class JSSEngineReferenceImpl extends JSSEngine {
                     this_dst_write = wire_buffer.length;
                     wire_data += this_dst_write;
 
-                    debug("JSSEngine.wrap() - Wrote " + wire_buffer.length + " bytes to dst.");
+                    System.err.println("JSSEngine.wrap() - Wrote " + wire_buffer.length + " bytes to dst.");
                 } else {
-                    debug("JSSEngine.wrap(): not writing from write_buf into dst: this_dst_write=0 write_buf.read_capacity=" + Buffer.ReadCapacity(write_buf) + " dst.remaining=" + dst.remaining());
+                    System.err.println("JSSEngine.wrap(): not writing from write_buf into dst: this_dst_write=0 write_buf.read_capacity=" + Buffer.ReadCapacity(write_buf) + " dst.remaining=" + dst.remaining());
                 }
             } else {
-                debug("JSSEngine.wrap(): not writing from write_buf into NULL dst");
+                System.err.println("JSSEngine.wrap(): not writing from write_buf into NULL dst");
             }
         } while (this_src_write != 0 || this_dst_write != 0);
 
+        System.err.println("JSSEngine.wrap(): seen_exception: " + seen_exception);
+        System.err.println("JSSEngine.wrap(): ssl_exception: " + ssl_exception);
         if (seen_exception == false && ssl_exception == null) {
             ssl_exception = checkSSLAlerts();
             seen_exception = (ssl_exception != null);
@@ -1599,7 +1606,7 @@ public class JSSEngineReferenceImpl extends JSSEngine {
         // Before we return, check if an exception occurred and throw it if
         // one did.
         if (ssl_exception != null) {
-            info("JSSEngine.wrap() - Got SSLException: " + ssl_exception);
+            System.err.println("JSSEngine.wrap() - Got SSLException: " + ssl_exception);
             SSLException excpt = ssl_exception;
             ssl_exception = null;
             cleanup();
@@ -1916,6 +1923,7 @@ public class JSSEngineReferenceImpl extends JSSEngine {
                     + excpt.getMessage();
 
             seen_exception = true;
+            System.err.println("JSSEngine.handleCertificateException(): " + msg);
             ssl_exception = new SSLPeerUnverifiedException(msg);
             return nss_code;
         }
