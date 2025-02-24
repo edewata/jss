@@ -1,9 +1,16 @@
 package org.mozilla.jss.ssl.javax;
 
-import javax.net.ssl.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EventListener;
 
-import org.mozilla.jss.ssl.*;
+import javax.net.ssl.SSLParameters;
+
+import org.mozilla.jss.ssl.SSLCipher;
+import org.mozilla.jss.ssl.SSLVersion;
+import org.mozilla.jss.ssl.SSLVersionRange;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JSSParameters is an implementation of SSLParameters to interoperate
@@ -22,6 +29,9 @@ import org.mozilla.jss.ssl.*;
  * used to find the certificate.
  */
 public class JSSParameters extends SSLParameters {
+
+    public static Logger logger = LoggerFactory.getLogger(JSSParameters.class);
+
     private SSLCipher[] suites;
     private SSLVersionRange range;
     private String alias;
@@ -70,6 +80,13 @@ public class JSSParameters extends SSLParameters {
         if (cipherSuites == null || cipherSuites.length == 0) {
             suites = null;
             return;
+        }
+
+        logger.warn("JSSParameters: setEnabledCipherSuites()");
+        if (suites != null) {
+            for (String suite : cipherSuites) {
+                logger.warn("JSSParameters: - " + suite);
+            }
         }
 
         ArrayList<SSLCipher> converted = new ArrayList<>();

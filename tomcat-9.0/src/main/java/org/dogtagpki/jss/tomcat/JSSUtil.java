@@ -19,15 +19,12 @@
 
 package org.dogtagpki.jss.tomcat;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLEngine;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
@@ -37,14 +34,16 @@ import org.apache.tomcat.util.net.SSLContext;
 import org.apache.tomcat.util.net.SSLHostConfigCertificate;
 import org.apache.tomcat.util.net.SSLUtilBase;
 import org.mozilla.jss.JSSProvider;
+import org.mozilla.jss.crypto.Policy;
 import org.mozilla.jss.provider.javax.crypto.JSSNativeTrustManager;
+import org.mozilla.jss.ssl.SSLCipher;
+import org.mozilla.jss.ssl.SSLVersion;
 
 public class JSSUtil extends SSLUtilBase {
     public static Log logger = LogFactory.getLog(JSSUtil.class);
 
     private String keyAlias;
 
-    private SSLEngine engine;
     private Set<String> protocols;
     private Set<String> ciphers;
 
@@ -53,28 +52,6 @@ public class JSSUtil extends SSLUtilBase {
 
         keyAlias = certificate.getCertificateKeyAlias();
         logger.debug("JSSUtil: instance created");
-    }
-
-    private void init() {
-        if (engine != null) {
-            return;
-        }
-
-        try {
-            JSSContext ctx = new JSSContext(null);
-            ctx.init(null, null, null);
-            engine = ctx.createSSLEngine();
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
-
-        protocols = Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList(engine.getSupportedProtocols()))
-        );
-
-        ciphers = Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList(engine.getSupportedCipherSuites()))
-        );
     }
 
     @Override
@@ -115,15 +92,35 @@ public class JSSUtil extends SSLUtilBase {
 
     @Override
     protected Set<String> getImplementedProtocols() {
-        logger.debug("JSSUtil: getImplementedProtocols()");
-        init();
+
+        if (protocols != null) {
+            return protocols;
+        }
+
+        logger.warn("JSSUtil: getImplementedProtocols()");
+        protocols = new HashSet<>();
+        for (SSLVersion v : Policy.TLS_VERSION_RANGE.getAllInRange()) {
+            logger.warn("JSSUtil: - " + v);
+            protocols.add(v.jdkAlias());
+        }
+
         return protocols;
     }
 
     @Override
     protected Set<String> getImplementedCiphers() {
-        logger.debug("JSSUtil: getImplementedCiphers()");
-        init();
+
+        if (ciphers != null) {
+            return ciphers;
+        }
+
+        logger.warn("JSSUtil: getImplementedCiphers()");
+        ciphers = new HashSet<>();
+        for (SSLCipher c : SSLCipher.values()) {
+            if (!c.isSupported()) continue;
+            logger.warn("JSSUtil: - " + c);
+            ciphers.add(c.name());
+        }
 
         return ciphers;
     }

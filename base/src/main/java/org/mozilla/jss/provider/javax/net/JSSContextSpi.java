@@ -1,20 +1,28 @@
 package org.mozilla.jss.provider.javax.net;
 
-import java.security.*;
+import java.security.KeyManagementException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 
-import javax.net.ssl.*;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContextSpi;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSessionContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import org.mozilla.jss.provider.javax.crypto.JSSKeyManager;
+import org.mozilla.jss.ssl.SSLVersion;
 import org.mozilla.jss.ssl.javax.JSSEngine;
 import org.mozilla.jss.ssl.javax.JSSEngineReferenceImpl;
 import org.mozilla.jss.ssl.javax.JSSParameters;
 import org.mozilla.jss.ssl.javax.JSSServerSocketFactory;
 import org.mozilla.jss.ssl.javax.JSSSocketFactory;
-import org.mozilla.jss.ssl.SSLVersion;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JSSContextSpi extends SSLContextSpi {
     public static Logger logger = LoggerFactory.getLogger(JSSContextSpi.class);
@@ -26,7 +34,7 @@ public class JSSContextSpi extends SSLContextSpi {
 
     @Override
     public void engineInit(KeyManager[] kms, TrustManager[] tms, SecureRandom sr) throws KeyManagementException {
-        logger.debug("JSSContextSpi.engineInit(" + kms + ", " + tms + ", " + sr + ")");
+        logger.warn("JSSContextSpi.engineInit(" + kms + ", " + tms + ", " + sr + ")");
 
         if (kms != null) {
             for (KeyManager km : kms) {
@@ -51,7 +59,7 @@ public class JSSContextSpi extends SSLContextSpi {
 
     @Override
     public SSLEngine engineCreateSSLEngine() {
-        logger.debug("JSSContextSpi.engineCreateSSLEngine()");
+        logger.warn("JSSContextSpi.engineCreateSSLEngine()");
 
         JSSEngine ret = new JSSEngineReferenceImpl();
         initializeEngine(ret);
@@ -61,7 +69,7 @@ public class JSSContextSpi extends SSLContextSpi {
 
     @Override
     public SSLEngine engineCreateSSLEngine(String host, int port) {
-        logger.debug("JSSContextSpi.engineCreateSSLEngine(" + host + ", " + port + ")");
+        logger.warn("JSSContextSpi.engineCreateSSLEngine(" + host + ", " + port + ")");
 
         JSSEngine ret = new JSSEngineReferenceImpl(host, port);
         initializeEngine(ret);
@@ -80,13 +88,13 @@ public class JSSContextSpi extends SSLContextSpi {
 
     @Override
     public SSLSessionContext engineGetClientSessionContext() {
-        logger.debug("JSSContextSpi.engineGetClientSessionContext() - not implemented");
+        logger.warn("JSSContextSpi.engineGetClientSessionContext() - not implemented");
         return null;
     }
 
     @Override
     public SSLSessionContext engineGetServerSessionContext() {
-        logger.debug("JSSContextSpi.engineGetServerSessionContext() - not implemented");
+        logger.warn("JSSContextSpi.engineGetServerSessionContext() - not implemented");
         return null;
     }
 
@@ -97,7 +105,7 @@ public class JSSContextSpi extends SSLContextSpi {
             protocol = protocol_version.jdkAlias();
         }
 
-        logger.debug("JSSContextSpi.engineGetServerSocketFactory() @ " + protocol);
+        logger.warn("JSSContextSpi.engineGetServerSocketFactory() @ " + protocol);
         return new JSSServerSocketFactory(protocol, key_manager, trust_managers);
     }
 
@@ -108,7 +116,7 @@ public class JSSContextSpi extends SSLContextSpi {
             protocol = protocol_version.jdkAlias();
         }
 
-        logger.debug("JSSContextSpi.engineGetSocketFactory() @ " + protocol);
+        logger.warn("JSSContextSpi.engineGetSocketFactory() @ " + protocol);
         return new JSSSocketFactory(protocol, key_manager, trust_managers);
     }
 

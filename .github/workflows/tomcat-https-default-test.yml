@@ -56,10 +56,19 @@ jobs:
         run: |
           docker cp /tmp/RPMS/. server:/root/RPMS/
           docker exec server bash -c "dnf install -y /root/RPMS/*"
+          docker exec server dnf install -y xmlstarlet
 
       - name: Create Tomcat
         run: |
           docker exec server pki-server create -v
+
+      - name: Configure JSS logging
+        run: |
+          docker exec server sed -i \
+              "s/^\(org.mozilla.jss.level\) *=.*/\1 = INFO/" \
+              /var/lib/pki/pki-tomcat/conf/logging.properties
+
+          docker exec server cat /var/lib/pki/pki-tomcat/conf/logging.properties
 
       - name: Create NSS database in Tomcat
         run: |
@@ -150,6 +159,8 @@ jobs:
               -d '/document/@*' \
               -d '/document/ssltest/*[not(self::protocol)]' \
               sslscan.xml | tee actual
+
+          diff expected actual
 
       - name: Check ciphers
         run: |
@@ -243,6 +254,49 @@ jobs:
               -d '/document/@*' \
               -d '/document/ssltest/*[not(self::certificates)]' \
               -d '/document/ssltest/certificates/certificate/*[self::not-valid-before or self::not-valid-after]' \
+              sslscan.xml | tee actual
+
+          diff expected actual
+
+      - name: Configure ciphers
+        run: |
+          docker exec server xmlstarlet edit --inplace \
+              -u "//SSLHostConfig/@ciphers" \
+              -v "TLS_AES_256_GCM_SHA384,ECDHE-RSA-AES256-GCM-SHA384" \
+              -i "//SSLHostConfig[not(@ciphers)]" \
+              -t attr \
+              -n "ciphers" \
+              -v "TLS_AES_256_GCM_SHA384,ECDHE-RSA-AES256-GCM-SHA384" \
+              /etc/pki/pki-tomcat/server.xml
+
+          docker exec server cat /etc/pki/pki-tomcat/server.xml
+
+      - name: Restart Tomcat
+        run: |
+          docker exec server pki-server restart --wait -v
+
+      - name: Run sslscan
+        run: |
+          docker exec client sslscan \
+              --xml=$SHARED/sslscan.xml \
+              server.example.com:8443
+          cat sslscan.xml
+
+      - name: Check ciphers
+        run: |
+          cat > expected << EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <document>
+            <ssltest host="server.example.com" sniname="server.example.com" port="8443">
+              <cipher status="preferred" sslversion="TLSv1.3" bits="256" cipher="TLS_AES_256_GCM_SHA384" id="0x1302" strength="strong" curve="25519" ecdhebits="253"/>
+              <cipher status="preferred" sslversion="TLSv1.2" bits="256" cipher="ECDHE-RSA-AES256-GCM-SHA384" id="0xC030" strength="strong" curve="25519" ecdhebits="253"/>
+            </ssltest>
+          </document>
+          EOF
+
+          xmlstarlet ed \
+              -d '/document/@*' \
+              -d '/document/ssltest/*[not(self::cipher)]' \
               sslscan.xml | tee actual
 
           diff expected actual

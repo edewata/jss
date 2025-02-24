@@ -371,6 +371,9 @@ public abstract class JSSEngine extends javax.net.ssl.SSLEngine {
      */
     @Override
     public void setSSLParameters(SSLParameters params) {
+
+        logger.warn("JSSEngine: setSSLParameters()");
+
         JSSParameters parsed;
 
         // Try to cast the passed parameter into a JSSParameters. This has
@@ -517,6 +520,14 @@ public abstract class JSSEngine extends javax.net.ssl.SSLEngine {
      */
     @Override
     public void setEnabledCipherSuites(String[] suites) throws IllegalArgumentException {
+
+        logger.warn("JSSEngine: setEnabledCipherSuites()");
+        if (suites != null) {
+            for (String suite : suites) {
+                logger.warn("JSSEngine: - " + suite);
+            }
+        }
+
         JSSParameters parser = new JSSParameters();
         parser.setCipherSuites(suites);
 
@@ -528,6 +539,14 @@ public abstract class JSSEngine extends javax.net.ssl.SSLEngine {
      * instances.
      */
     public void setEnabledCipherSuites(SSLCipher[] suites) throws IllegalArgumentException {
+
+        logger.warn("JSSEngine: setEnabledCipherSuites()");
+        if (suites != null) {
+            for (SSLCipher suite : suites) {
+                logger.warn("JSSEngine: - " + suite);
+            }
+        }
+
         if (ssl_fd != null) {
             String msg = "Unable to process setEnabledCipherSuites(...) ";
             msg += "after handshake has started!";
@@ -639,11 +658,11 @@ public abstract class JSSEngine extends javax.net.ssl.SSLEngine {
      */
     @Override
     public void setEnabledProtocols(String[] protocols) throws IllegalArgumentException {
-        logger.debug("JSSEngine: setEnabledProtocols(");
+        logger.warn("JSSEngine: setEnabledProtocols(");
         for (String protocol : protocols) {
-            logger.debug("\t" + protocol + ",");
+            logger.warn("\t" + protocol + ",");
         }
-        logger.debug(")");
+        logger.warn(")");
 
         JSSParameters parser = new JSSParameters();
         parser.setProtocols(protocols);

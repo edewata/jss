@@ -53,6 +53,7 @@ import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.ExceptionUtils;
 import org.apache.tomcat.util.net.NioChannel;
 import org.apache.tomcat.util.net.NioEndpoint;
+import org.apache.tomcat.util.net.SSLHostConfig;
 import org.apache.tomcat.util.net.SocketBufferHandler;
 import org.apache.tomcat.util.net.openssl.ciphers.Cipher;
 
@@ -126,8 +127,24 @@ public class JSSNioEndpoint extends NioEndpoint {
 
     }
     @Override
-    protected SSLEngine createSSLEngine(String arg0, List<Cipher> arg1, List<String> arg2) {
-        return super.createSSLEngine(arg0, arg1, arg2);
+    protected SSLEngine createSSLEngine(
+            String sniHostName,
+            List<Cipher> clientRequestedCiphers,
+            List<String> clientRequestedApplicationProtocols) {
+
+        log.warn("JSSNioEndpoint: createSSLEngine()");
+        log.warn("JSSNioEndpoint: - SNI hostname: " + sniHostName);
+
+        SSLHostConfig sslHostConfig = getSSLHostConfig(sniHostName);
+        log.warn("JSSNioEndpoint: - ciphers:");
+        String[] ciphers = sslHostConfig.getEnabledCiphers();
+        if (ciphers != null) {
+            for (String cipher : ciphers) {
+                log.warn("JSSNioEndpoint:   - " + cipher);
+            }
+        }
+
+        return super.createSSLEngine(sniHostName, clientRequestedCiphers, clientRequestedApplicationProtocols);
     }
 
 }

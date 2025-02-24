@@ -60,7 +60,7 @@ public class JSSContext implements org.apache.tomcat.util.net.SSLContext {
 
     @Override
     public javax.net.ssl.SSLEngine createSSLEngine() {
-        logger.debug("JSSContext.createSSLEngine()");
+        logger.warn("JSSContext.createSSLEngine()");
         javax.net.ssl.SSLEngine eng = ctx.createSSLEngine();
 
 	TomcatJSS instance = TomcatJSS.getInstance();
@@ -71,6 +71,15 @@ public class JSSContext implements org.apache.tomcat.util.net.SSLContext {
             if(instance != null) {
                 j_eng.setListeners(instance.getSocketListeners());
             }
+
+            //String[] ciphers = instance.getCiphers();
+            //logger.warn("JSSContext.setEnabledCipherSuites()");
+            //if (ciphers != null) {
+            //    for (String cipher : ciphers) {
+            //        logger.warn("JSSContext: - " + cipher);
+            //    }
+            //}
+            //j_eng.setEnabledCipherSuites(ciphers);
         }
 
         return eng;
