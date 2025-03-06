@@ -1,0 +1,6 @@
+= API Changes =
+
+== Deprecate TomcatJSS ==
+
+The `org.dogtagpki.jss.tomcat.TomcatJSS` has been deprecated and will be removed in the future.
+Use `org.dogtagpki.jss.JSS` instead.

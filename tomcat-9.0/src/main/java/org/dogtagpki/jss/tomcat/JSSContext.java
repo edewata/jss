@@ -8,6 +8,7 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 
+import org.dogtagpki.jss.JSS;
 import org.mozilla.jss.JSSProvider;
 import org.mozilla.jss.provider.javax.crypto.JSSKeyManager;
 import org.mozilla.jss.provider.javax.crypto.JSSTrustManager;
@@ -63,13 +64,13 @@ public class JSSContext implements org.apache.tomcat.util.net.SSLContext {
         logger.debug("JSSContext.createSSLEngine()");
         javax.net.ssl.SSLEngine eng = ctx.createSSLEngine();
 
-	TomcatJSS instance = TomcatJSS.getInstance();
+        JSS jss = JSS.getInstance();
 
         if (eng instanceof JSSEngine) {
             JSSEngine j_eng = (JSSEngine) eng;
             j_eng.setCertFromAlias(alias);
-            if(instance != null) {
-                j_eng.setListeners(instance.getSocketListeners());
+            if(jss != null) {
+                j_eng.setListeners(jss.getSocketListeners());
             }
         }
 

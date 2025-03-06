@@ -27,6 +27,7 @@ import org.apache.coyote.http11.AbstractHttp11JsseProtocol;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.net.NioChannel;
+import org.dogtagpki.jss.JSS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,106 +36,106 @@ public class Http11NioProtocol extends AbstractHttp11JsseProtocol<NioChannel> {
     public static Logger logger = LoggerFactory.getLogger(Http11NioProtocol.class);
     private static final Log log = LogFactory.getLog(Http11NioProtocol.class);
 
-    TomcatJSS tomcatjss = TomcatJSS.getInstance();
+    JSS jss = JSS.getInstance();
 
     public Http11NioProtocol() {
        super(new JSSNioEndpoint());
     }
 
     public String getCertdbDir() {
-        return tomcatjss.getCertdbDir();
+        return jss.getCertdbDir();
     }
 
     public void setCertdbDir(String certdbDir) {
-        tomcatjss.setCertdbDir(certdbDir);
+        jss.setCertdbDir(certdbDir);
     }
 
     public String getPasswordClass() {
-        return tomcatjss.getPasswordClass();
+        return jss.getPasswordClass();
     }
 
     public void setPasswordClass(String passwordClass) {
-        tomcatjss.setPasswordClass(passwordClass);
+        jss.setPasswordClass(passwordClass);
     }
 
     public String getPasswordFile() {
-        return tomcatjss.getPasswordFile();
+        return jss.getPasswordFile();
     }
 
     public void setPasswordFile(String passwordFile) {
-        tomcatjss.setPasswordFile(passwordFile);
+        jss.setPasswordFile(passwordFile);
     }
 
     public String getServerCertNickFile() {
-        return tomcatjss.getServerCertNickFile();
+        return jss.getServerCertNickFile();
     }
 
     public void setServerCertNickFile(String serverCertNickFile) {
-        tomcatjss.setServerCertNickFile(serverCertNickFile);
+        jss.setServerCertNickFile(serverCertNickFile);
     }
 
     public boolean getEnableOCSP() {
-        return tomcatjss.getEnableRevocationCheck();
+        return jss.getEnableRevocationCheck();
     }
 
     public void setEnableOCSP(boolean enableOCSP) {
-        tomcatjss.setEnableRevocationCheck(enableOCSP);
+        jss.setEnableRevocationCheck(enableOCSP);
     }
 
     public boolean getEnableRevocationCheck() {
-        return tomcatjss.getEnableRevocationCheck();
+        return jss.getEnableRevocationCheck();
     }
-    
+
     public void setEnableRevocationCheck(boolean enableRevocationCheck) {
-        tomcatjss.setEnableRevocationCheck(enableRevocationCheck);
+        jss.setEnableRevocationCheck(enableRevocationCheck);
     }
 
     public String getOcspResponderURL() {
-        return tomcatjss.getOcspResponderURL();
+        return jss.getOcspResponderURL();
     }
 
     public void setOcspResponderURL(String ocspResponderURL) {
-        tomcatjss.setOcspResponderURL(ocspResponderURL);
+        jss.setOcspResponderURL(ocspResponderURL);
     }
 
     public String getOcspResponderCertNickname() {
-        return tomcatjss.getOcspResponderCertNickname();
+        return jss.getOcspResponderCertNickname();
     }
 
     public void setOcspResponderCertNickname(String ocspResponderCertNickname) {
-        tomcatjss.setOcspResponderCertNickname(ocspResponderCertNickname);
+        jss.setOcspResponderCertNickname(ocspResponderCertNickname);
     }
 
     public int getOcspCacheSize() {
-        return tomcatjss.getOcspCacheSize();
+        return jss.getOcspCacheSize();
     }
 
     public void setOcspCacheSize(int ocspCacheSize) {
-        tomcatjss.setOcspCacheSize(ocspCacheSize);
+        jss.setOcspCacheSize(ocspCacheSize);
     }
 
     public int getOcspMinCacheEntryDuration() {
-        return tomcatjss.getOcspMinCacheEntryDuration();
+        return jss.getOcspMinCacheEntryDuration();
     }
 
     public void setOcspMinCacheEntryDuration(int ocspMinCacheEntryDuration) {
-        tomcatjss.setOcspMinCacheEntryDuration(ocspMinCacheEntryDuration);
+        jss.setOcspMinCacheEntryDuration(ocspMinCacheEntryDuration);
     }
 
     public int getOcspMaxCacheEntryDuration() {
-        return tomcatjss.getOcspMaxCacheEntryDuration();
+        return jss.getOcspMaxCacheEntryDuration();
     }
 
     public void setOcspMaxCacheEntryDuration(int ocspMaxCacheEntryDuration) {
-        tomcatjss.setOcspMaxCacheEntryDuration(ocspMaxCacheEntryDuration);
+        jss.setOcspMaxCacheEntryDuration(ocspMaxCacheEntryDuration);
     }
 
     public int getOcspTimeout() {
-        return tomcatjss.getOcspTimeout();
+        return jss.getOcspTimeout();
     }
 
     public void setOcspTimeout(int ocspTimeout) {
-        tomcatjss.setOcspTimeout(ocspTimeout);
+        jss.setOcspTimeout(ocspTimeout);
     }
 
     public void setKeystorePassFile(String keystorePassFile) {

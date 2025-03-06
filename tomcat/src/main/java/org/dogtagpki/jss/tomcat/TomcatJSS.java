@@ -41,6 +41,7 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.lang3.StringUtils;
+import org.dogtagpki.jss.JSS;
 import org.mozilla.jss.CertDatabaseException;
 import org.mozilla.jss.CryptoManager;
 import org.mozilla.jss.InitializationValues;
@@ -62,15 +63,24 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
+/**
+ * TODO: Merge TomcatJSS into JSS in JSS 5.8.
+ */
 public class TomcatJSS implements SSLSocketListener {
 
     public static final Logger logger = LoggerFactory.getLogger(TomcatJSS.class);
 
-    public static final TomcatJSS INSTANCE = new TomcatJSS();
     public static final int MAX_LOGIN_ATTEMPTS = 3;
     public static final String CATALINA_BASE = "catalina.base";
 
-    public static TomcatJSS getInstance() { return INSTANCE; }
+    /**
+     * @deprecated Use <code>org.dogtagpki.jss.JSS.getInstance()</code> instead.
+     */
+    @Deprecated(since="5.7.0", forRemoval=true)
+    public static TomcatJSS getInstance() {
+        logger.warn("TomcatJSS has been deprecated. Use JSS instead");
+        return JSS.INSTANCE;
+    }
 
     Collection<SSLSocketListener> socketListeners = new ArrayList<>();
 
@@ -95,15 +105,6 @@ public class TomcatJSS implements SSLSocketListener {
     int ocspMinCacheEntryDuration = 3600; // seconds (default: 1 hour)
     int ocspMaxCacheEntryDuration = 86400; // seconds (default: 24 hours)
     int ocspTimeout = 60; // seconds (default: 1 minute)
-
-    String strictCiphers;
-    boolean boolStrictCiphers;
-
-    String sslRangeCiphers;
-    String sslOptions;
-    String ssl2Ciphers;
-    String ssl3Ciphers;
-    String tlsCiphers;
 
     boolean initialized;
 
@@ -393,12 +394,12 @@ public class TomcatJSS implements SSLSocketListener {
         File configFile = new File(jssConf);
 
         if (configFile.exists()) {
-            logger.info("TomcatJSS: Loading JSS configuration from {}", jssConf);
+            logger.debug("JSS: Loading JSS configuration from {}", jssConf);
             loadJSSConfig(configFile);
 
         } else {
             String serverXml = catalinaBase + "/conf/server.xml";
-            logger.info("TomcatJSS: Loading JSS configuration from {}", serverXml);
+            logger.debug("JSS: Loading JSS configuration from {}", serverXml);
             loadTomcatConfig(serverXml);
         }
     }
@@ -412,29 +413,29 @@ public class TomcatJSS implements SSLSocketListener {
             return;
         }
 
-        logger.info("TomcatJSS: initialization");
+        logger.debug("JSS: initialization");
 
         if (certdbDir == null) {
             certdbDir = System.getProperty(CATALINA_BASE) + File.separator + "alias";
         }
 
-        logger.debug("TomcatJSS: certdbDir: {}", certdbDir);
+        logger.debug("JSS: certdbDir: {}", certdbDir);
 
         if (passwordClass == null) {
             passwordClass = PlainPasswordFile.class.getName();
         }
 
-        logger.debug("TomcatJSS: passwordClass: {}", passwordClass);
+        logger.debug("JSS: passwordClass: {}", passwordClass);
 
         if (passwordFile == null) {
             passwordFile = System.getProperty(CATALINA_BASE) + File.separator +
                     "conf" + File.separator + "password.conf";
         }
 
-        logger.debug("TomcatJSS: passwordFile: {}", passwordFile);
+        logger.debug("JSS: passwordFile: {}", passwordFile);
 
         if (StringUtils.isNotEmpty(serverCertNickFile)) {
-            logger.debug("TomcatJSS: serverCertNickFile: {}", serverCertNickFile);
+            logger.debug("JSS: serverCertNickFile: {}", serverCertNickFile);
         }
 
         InitializationValues vals = new InitializationValues(certdbDir);
@@ -446,7 +447,7 @@ public class TomcatJSS implements SSLSocketListener {
             CryptoManager.initialize(vals);
 
         } catch (AlreadyInitializedException e) {
-            logger.warn("TomcatJSS: {}", e, e);
+            logger.warn("JSS: {}", e, e);
         }
 
         manager = CryptoManager.getInstance();
@@ -458,10 +459,10 @@ public class TomcatJSS implements SSLSocketListener {
 
         if (StringUtils.isNotEmpty(serverCertNickFile)) {
             serverCertNick = new String(Files.readAllBytes(Paths.get(serverCertNickFile))).trim();
-            logger.debug("serverCertNick: {}", serverCertNick);
+            logger.debug("JSS: serverCertNick: {}", serverCertNick);
         }
 
-        logger.debug("clientAuth: {}", clientAuth);
+        logger.debug("JSS: clientAuth: {}", clientAuth);
         if (clientAuth.equalsIgnoreCase("true")) {
             requireClientAuth = true;
 
@@ -473,8 +474,8 @@ public class TomcatJSS implements SSLSocketListener {
             wantClientAuth = true;
         }
 
-        logger.debug("requireClientAuth: {}", requireClientAuth);
-        logger.debug("wantClientAuth: {}", wantClientAuth);
+        logger.debug("JSS: requireClientAuth: {}", requireClientAuth);
+        logger.debug("JSS: wantClientAuth: {}", wantClientAuth);
 
         if (requireClientAuth || wantClientAuth) {
             configureRevocationCheck();
@@ -483,14 +484,14 @@ public class TomcatJSS implements SSLSocketListener {
         // 12 hours = 43200 seconds
         SSLServerSocket.configServerSessionIDCache(0, 43200, 43200, null);
 
-        logger.info("TomcatJSS: initialization complete");
+        logger.debug("JSS: initialization complete");
 
         initialized = true;
     }
 
     public void login() throws NoSuchTokenException, TokenException {
 
-        logger.debug("TomcatJSS: logging into tokens");
+        logger.debug("JSS: logging into tokens");
 
         Enumeration<String> tags = passwordStore.getTags();
 
@@ -510,18 +511,18 @@ public class TomcatJSS implements SSLSocketListener {
         CryptoToken token = getToken(tag);
 
         if (token.isLoggedIn()) {
-            logger.debug("TomcatJSS: already logged into {}", tag);
+            logger.debug("JSS: already logged into {}", tag);
             return;
         }
 
-        logger.debug("TomcatJSS: logging into {}", tag);
+        logger.debug("JSS: logging into {}", tag);
 
         int iteration = 0;
         do {
             String strPassword = passwordStore.getPassword(tag, iteration);
 
             if (strPassword == null) {
-                logger.debug("TomcatJSS: no password for {}", tag);
+                logger.debug("JSS: no password for {}", tag);
                 return;
             }
 
@@ -531,7 +532,7 @@ public class TomcatJSS implements SSLSocketListener {
                 token.login(password);
                 return; //NOSONAR - Not a redundant return, break will print the final error message even on success.
             } catch (IncorrectPasswordException e) {
-                logger.warn("TomcatJSS: incorrect password");
+                logger.warn("JSS: incorrect password");
                 iteration ++;
             } finally {
                 password.clear();
@@ -539,7 +540,7 @@ public class TomcatJSS implements SSLSocketListener {
 
         } while (iteration < MAX_LOGIN_ATTEMPTS);
 
-        logger.error("TomcatJSS: failed to log into {}", tag);
+        logger.error("JSS: failed to log into {}", tag);
     }
 
     public CryptoToken getToken(String tag) throws NoSuchTokenException {
@@ -559,20 +560,20 @@ public class TomcatJSS implements SSLSocketListener {
 
     public void configureRevocationCheck() throws GeneralSecurityException, ConfigurationException {
 
-        logger.info("configuring Revocation Check");
+        logger.debug("JSS: configuring Revocation Check");
 
-        logger.debug("enableRevocationCheck: {}", enableRevocationCheck);
+        logger.debug("JSS: enableRevocationCheck: {}", enableRevocationCheck);
         if (!enableRevocationCheck) {
             return;
         }
 
-        logger.debug("ocspResponderURL: {}", ocspResponderURL);
+        logger.debug("JSS: ocspResponderURL: {}", ocspResponderURL);
 
         if (StringUtils.isEmpty(ocspResponderURL)) {
             ocspResponderURL = null;
         }
 
-        logger.debug("ocspResponderCertNickname: {}", ocspResponderCertNickname);
+        logger.debug("JSS: ocspResponderCertNickname: {}", ocspResponderCertNickname);
         if (StringUtils.isEmpty(ocspResponderCertNickname)) {
             ocspResponderCertNickname = null;
         }
@@ -592,15 +593,15 @@ public class TomcatJSS implements SSLSocketListener {
                 ocspResponderURL,
                 ocspResponderCertNickname);
 
-        logger.debug("ocspCacheSize: {}", ocspCacheSize);
-        logger.debug("ocspMinCacheEntryDuration: {}", ocspMinCacheEntryDuration);
-        logger.debug("ocspMaxCacheEntryDuration: {}", ocspMaxCacheEntryDuration);
+        logger.debug("JSS: ocspCacheSize: {}", ocspCacheSize);
+        logger.debug("JSS: ocspMinCacheEntryDuration: {}", ocspMinCacheEntryDuration);
+        logger.debug("JSS: ocspMaxCacheEntryDuration: {}", ocspMaxCacheEntryDuration);
 
         manager.OCSPCacheSettings(ocspCacheSize,
                 ocspMinCacheEntryDuration,
                 ocspMaxCacheEntryDuration);
 
-        logger.debug("ocspTimeout: {}", ocspTimeout);
+        logger.debug("JSS: ocspTimeout: {}", ocspTimeout);
 
         manager.setOCSPTimeout(ocspTimeout);
     }

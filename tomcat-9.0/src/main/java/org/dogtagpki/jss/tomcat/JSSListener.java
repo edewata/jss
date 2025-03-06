@@ -22,6 +22,7 @@ package org.dogtagpki.jss.tomcat;
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleEvent;
 import org.apache.catalina.LifecycleListener;
+import org.dogtagpki.jss.JSS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,12 +52,12 @@ public class JSSListener implements LifecycleListener {
 
     public void initJSS() {
 
-        logger.info("JSSListener: Initializing JSS");
+        logger.info("JSSListener: Initializing JSS connector");
 
         try {
-            TomcatJSS tomcatjss = TomcatJSS.getInstance();
-            tomcatjss.loadConfig();
-            tomcatjss.init();
+            JSS jss = JSS.getInstance();
+            jss.loadConfig();
+            jss.init();
 
         } catch (Exception e) {
             throw new RuntimeException(e);
