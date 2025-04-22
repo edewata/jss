@@ -56,12 +56,11 @@ ExcludeArch: i686
 # Java
 ################################################################################
 
-# use Java 17 on Fedora 39 or older and RHEL 9 or older
-# otherwise, use Java 21
-
+# use Java 17 on RHEL 8
+# otherwise use Java 21
 # maven-local is a subpackage of javapackages-tools
 
-%if 0%{?fedora} && 0%{?fedora} <= 39 || 0%{?rhel} && 0%{?rhel} <= 9
+%if 0%{?rhel} && 0%{?rhel} <= 8
 
 %define java_devel java-17-openjdk-devel
 %define java_headless java-17-openjdk-headless
@@ -73,7 +72,7 @@ ExcludeArch: i686
 %define java_devel java-21-openjdk-devel
 %define java_headless java-21-openjdk-headless
 %define java_home %{_jvmdir}/jre-21-openjdk
-%define maven_local maven-local
+%define maven_local maven-local-openjdk21
 
 %endif
 
