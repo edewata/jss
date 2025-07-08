@@ -1,9 +1,5 @@
 macro(jss_config)
-    # Set the current JSS release number. Arguments are:
-    #   MAJOR MINOR PATCH BETA
-    # When BETA is 1, it is a pre-release (it enables some tests).
-    # When BETA is 0, it is a final release.
-    jss_config_version(5 9 0 1)
+    jss_config_version()
 
     # Configure output directories
     jss_config_outputs()
@@ -27,7 +23,7 @@ macro(jss_config)
     jss_config_template()
 endmacro()
 
-macro(jss_config_version MAJOR MINOR PATCH BETA)
+macro(jss_config_version)
     # This sets the JSS Version for use in CMake and propagates it to the
     # necessary source locations. These are:
     #
@@ -39,21 +35,49 @@ macro(jss_config_version MAJOR MINOR PATCH BETA)
     # can be used anywhere that is necessary. Some uses are for setting the
     # version number in the library and jar file, etc.
 
-    # Define variables from passed arguments
-    set(JSS_VERSION_MAJOR "${MAJOR}")
-    set(JSS_VERSION_MINOR "${MINOR}")
-    set(JSS_VERSION_PATCH "${PATCH}")
-    set(JSS_VERSION_BETA "${BETA}")
+    if (DEFINED VERSION)
+        string(REGEX REPLACE "^([0-9]+).*" "\\1" JSS_VERSION_MAJOR ${VERSION})
+        string(REGEX REPLACE "^[0-9]+\\.([0-9]+).*" "\\1" JSS_VERSION_MINOR ${VERSION})
+        string(REGEX REPLACE "^[0-9]+\\.[0-9]+\\.([0-9]+).*" "\\1" JSS_VERSION_PATCH ${VERSION})
+    else()
+        file(READ "${CMAKE_SOURCE_DIR}/jss.spec" SPEC)
+
+        string(REGEX MATCH "%global *major_version *([0-9]+)" _ ${SPEC})
+        set(JSS_VERSION_MAJOR ${CMAKE_MATCH_1})
+
+        string(REGEX MATCH "%global *minor_version *([0-9]+)" _ ${SPEC})
+        set(JSS_VERSION_MINOR ${CMAKE_MATCH_1})
+
+        string(REGEX MATCH "%global *update_version *([0-9]+)" _ ${SPEC})
+        set(JSS_VERSION_PATCH ${CMAKE_MATCH_1})
+
+        set(VERSION "${JSS_VERSION_MAJOR}.${JSS_VERSION_MINOR}.${JSS_VERSION_PATCH}")
+    endif (DEFINED VERSION)
+
+    message(STATUS "VERSION: ${VERSION}")
+
+    if (DEFINED PHASE)
+        # pre-release (it enables some tests)
+        set(JSS_VERSION_BETA 1)
+    else()
+        # final release
+        set(JSS_VERSION_BETA 0)
+
+        string(REGEX MATCH "%global *phase *([a-zA-Z0-9]+)" _ ${SPEC})
+        set(PHASE ${CMAKE_MATCH_1})
+    endif(DEFINED PHASE)
+
+    message(STATUS "PHASE: ${PHASE}")
 
     set(JSS_VERSION "${JSS_VERSION_MAJOR}.${JSS_VERSION_MINOR}.${JSS_VERSION_PATCH}")
     set(JSS_VERSION_MANIFEST "${JSS_VERSION_MAJOR}.${JSS_VERSION_MINOR}")
     set(JSS_VERSION_STR "JSS_${JSS_VERSION_MAJOR}_${JSS_VERSION_MINOR}")
 
-    if(${PATCH} GREATER 0)
+    if(${JSS_VERSION_PATCH} GREATER 0)
         set(JSS_VERSION_MANIFEST "${JSS_VERSION_MANIFEST}.${JSS_VERSION_PATCH}")
         set(JSS_VERSION_STR "${JSS_VERSION_STR}_${JSS_VERSION_PATCH}")
     endif()
-    if(${BETA} GREATER 0)
+    if(${JSS_VERSION_BETA} GREATER 0)
         set(JSS_VERSION "${JSS_VERSION} beta ${JSS_VERSION_BETA}")
         set(JSS_VERSION_STR "${JSS_VERSION_STR}_b${JSS_VERSION_BETA}")
     endif()
