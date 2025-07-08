@@ -317,6 +317,7 @@ touch %{_vpath_builddir}/.targets/finished_generate_javadocs
 
 # build native code and run native tests with CMake
 ./build.sh \
+    --debug \
     %{?_verbose:-v} \
     --work-dir=%{_vpath_builddir} \
     --prefix-dir=%{_prefix} \
@@ -327,7 +328,6 @@ touch %{_vpath_builddir}/.targets/finished_generate_javadocs
     --cmake=%{__cmake} \
     --java-home=%{java_home} \
     --jni-dir=%{_jnidir} \
-    --version=%{version} \
     --without-java \
     --without-javadoc \
     %{!?with_tests:--without-tests} \

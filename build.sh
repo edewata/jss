@@ -66,7 +66,6 @@ usage() {
     echo "    --install-dir=<path>   Installation directory."
     echo "    --source-tag=<tag>     Generate RPM sources from a source tag."
     echo "    --spec=<file>          Use the specified RPM spec (default: $SPEC_TEMPLATE)."
-    echo "    --version=<version>    Use the specified version number."
     echo "    --with-timestamp       Append timestamp to RPM version number."
     echo "    --with-commit-id       Append commit ID to RPM version number."
     echo "    --dist=<name>          Distribution name (e.g. fc28)."
@@ -347,35 +346,31 @@ cd "$WORK_DIR"
 
 spec=$(<"$SPEC_TEMPLATE")
 
-if [ "$VERSION" = "" ] ; then
-    # if version not specified, get from spec template
-
-    regex=$'%global *major_version *([^\n]+)'
-    if [[ $spec =~ $regex ]] ; then
-        MAJOR_VERSION="${BASH_REMATCH[1]}"
-    else
-        echo "ERROR: Missing major_version macro in $SPEC_TEMPLATE"
-        exit 1
-    fi
-
-    regex=$'%global *minor_version *([^\n]+)'
-    if [[ $spec =~ $regex ]] ; then
-        MINOR_VERSION="${BASH_REMATCH[1]}"
-    else
-        echo "ERROR: Missing minor_version macro in $SPEC_TEMPLATE"
-        exit 1
-    fi
-
-    regex=$'%global *update_version *([^\n]+)'
-    if [[ $spec =~ $regex ]] ; then
-        UPDATE_VERSION="${BASH_REMATCH[1]}"
-    else
-        echo "ERROR: Missing update_version macro in $SPEC_TEMPLATE"
-        exit 1
-    fi
-
-    VERSION="$MAJOR_VERSION.$MINOR_VERSION.$UPDATE_VERSION"
+regex=$'%global *major_version *([^\n]+)'
+if [[ $spec =~ $regex ]] ; then
+    MAJOR_VERSION="${BASH_REMATCH[1]}"
+else
+    echo "ERROR: Missing major_version macro in $SPEC_TEMPLATE"
+    exit 1
 fi
+
+regex=$'%global *minor_version *([^\n]+)'
+if [[ $spec =~ $regex ]] ; then
+    MINOR_VERSION="${BASH_REMATCH[1]}"
+else
+    echo "ERROR: Missing minor_version macro in $SPEC_TEMPLATE"
+    exit 1
+fi
+
+regex=$'%global *update_version *([^\n]+)'
+if [[ $spec =~ $regex ]] ; then
+    UPDATE_VERSION="${BASH_REMATCH[1]}"
+else
+    echo "ERROR: Missing update_version macro in $SPEC_TEMPLATE"
+    exit 1
+fi
+
+VERSION="$MAJOR_VERSION.$MINOR_VERSION.$UPDATE_VERSION"
 
 if [ "$DEBUG" = true ] ; then
     echo "VERSION: $VERSION"
@@ -458,6 +453,10 @@ if [ "$BUILD_TARGET" = "dist" ] ; then
     OPTIONS+=(-DJNI_DIR="$JNI_DIR" )
 
     OPTIONS+=(-DVERSION="$VERSION")
+
+    if [ "$PHASE" != "" ] ; then
+        OPTIONS+=(-DPHASE=$PHASE)
+    fi
 
     if [ "$WITH_JAVA" = false ] ; then
         OPTIONS+=(-DWITH_JAVA=FALSE)
