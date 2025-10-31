@@ -178,14 +178,14 @@ Summary:        Java Security Services (JSS) Connector for Tomcat
 %if 0%{?fedora} >=  %{fedora_cutoff} || 0%{?rhel} >= 10
 
 # Tomcat
-BuildRequires:  mvn(org.apache.tomcat:tomcat-catalina) >= 10.1.36
-BuildRequires:  mvn(org.apache.tomcat:tomcat-coyote) >= 10.1.36
-BuildRequires:  mvn(org.apache.tomcat:tomcat-juli) >= 10.1.36
+BuildRequires:  mvn(org.apache.tomcat:tomcat-catalina) <= 10.1.43
+BuildRequires:  mvn(org.apache.tomcat:tomcat-coyote) <= 10.1.43
+BuildRequires:  mvn(org.apache.tomcat:tomcat-juli) <= 10.1.43
 
 Requires:       %{product_id} = %{version}-%{release}
-Requires:       mvn(org.apache.tomcat:tomcat-catalina) >= 10.1.36
-Requires:       mvn(org.apache.tomcat:tomcat-coyote) >= 10.1.36
-Requires:       mvn(org.apache.tomcat:tomcat-juli) >= 10.1.36
+Requires:       mvn(org.apache.tomcat:tomcat-catalina) <= 10.1.43
+Requires:       mvn(org.apache.tomcat:tomcat-coyote) <= 10.1.43
+Requires:       mvn(org.apache.tomcat:tomcat-juli) <= 10.1.43
 
 %else
 
