@@ -3,12 +3,12 @@
 if [ "$BASE_IMAGE" = "" ]; then
     # For master branch use fedora:latest to provide a stable development
     # platform. For other branches use the target Fedora version.
-    if [ "$BRANCH_NAME" = "master" ]; then
-        BASE_IMAGE=registry.fedoraproject.org/fedora:latest
+    if [ "$BRANCH_NAME" = "v5.9" ]; then
+        BASE_IMAGE=registry.fedoraproject.org/fedora:44
         echo "BASE_IMAGE=$BASE_IMAGE" | tee -a $GITHUB_ENV
 
-    elif [ "$BRANCH_NAME" = "v5.9" ]; then
-        BASE_IMAGE=registry.fedoraproject.org/fedora:44
+    else  # if [ "$BRANCH_NAME" = "master" ]; then
+        BASE_IMAGE=registry.fedoraproject.org/fedora:latest
         echo "BASE_IMAGE=$BASE_IMAGE" | tee -a $GITHUB_ENV
     fi
 fi
