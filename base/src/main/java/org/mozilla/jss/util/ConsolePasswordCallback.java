@@ -15,6 +15,10 @@ public class ConsolePasswordCallback implements PasswordCallback {
     @Override
     public Password getPasswordFirstAttempt(PasswordCallbackInfo info)
             throws PasswordCallback.GiveUpException {
+        System.out.println("ConsolePasswordCallback.getPasswordFirstAttempt()");
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            System.out.println("- " + element.getClassName() + "." + element.getMethodName() + "():" + element.getLineNumber());
+        }
         System.out.println("Enter password for " + info.getName());
         return Password.readPasswordFromConsole();
     }
