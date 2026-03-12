@@ -120,6 +120,8 @@ Java_org_mozilla_jss_nss_PR_Shutdown(JNIEnv *env, jclass clazz, jobject fd,
 {
     PRFileDesc *real_fd = NULL;
 
+    printf("Calling PR.Shutdown(%x, %d)\n", fd, how);
+
     PR_ASSERT(env != NULL);
     PR_SetError(0, 0);
 
@@ -127,10 +129,13 @@ Java_org_mozilla_jss_nss_PR_Shutdown(JNIEnv *env, jclass clazz, jobject fd,
         return PR_SUCCESS;
     }
 
+    printf("PR.Shutdown(): Calling JSS_PR_getPRFileDesc()\n");
     if (JSS_PR_getPRFileDesc(env, fd, &real_fd) != PR_SUCCESS) {
         return PR_FAILURE;
     }
 
+    printf("PR.Shutdown(): real_fd: %x\n", real_fd);
+    printf("PR.Shutdown(): Calling PR_Shutdown()\n");
     return PR_Shutdown(real_fd, how);
 }
 
