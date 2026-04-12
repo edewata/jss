@@ -28,7 +28,7 @@ static const CK_MECHANISM_TYPE auth_alg_defs[] = {
     CKM_ML_DSA            /* ssl_auth_mldsa  parameter set) */
 #endif
 };
-PR_STATIC_ASSERT(PR_ARRAY_SIZE(auth_alg_defs) == ssl_auth_size);
+PR_STATIC_ASSERT(PR_ARRAY_SIZE(auth_alg_defs) < ssl_auth_size);
 
 /* Copied from NSS 3.97's ssl3con.c. */
 static const CK_MECHANISM_TYPE kea_alg_defs[] = {

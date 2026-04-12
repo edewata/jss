@@ -86,6 +86,7 @@ function(javac target)
 
     list(APPEND javac_options -source 17)
     list(APPEND javac_options -target 17)
+    list(APPEND javac_options --add-reads jss=ALL-UNNAMED)
     list(APPEND javac_options @${file_list})
 
     add_custom_command(
@@ -271,6 +272,8 @@ function(javadoc target)
         endforeach(path)
         set(command ${command} -sourcepath ${tmp})
     endif(sourcepath)
+
+    set(command ${command} -add-reads jss=ALL-UNNAMED)
 
     if (classpath)
         set(tmp)
