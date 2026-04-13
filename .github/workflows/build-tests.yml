@@ -145,7 +145,7 @@ jobs:
     name: Symbol Test
     runs-on: ubuntu-latest
     env:
-      JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+      JAVA_HOME: /usr/lib/jvm/java-21-openjdk-amd64
     steps:
       - name: Clone repository
         uses: actions/checkout@v4
