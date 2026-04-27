@@ -989,13 +989,10 @@ public final class CryptoManager implements TokenSupplier
      *      with the given nickname.
      * @exception TokenException If an error occurs in the security library.
      */
-    public org.mozilla.jss.crypto.X509Certificate
+
+    public native org.mozilla.jss.crypto.X509Certificate
     findCertByNickname(String nickname)
-        throws ObjectNotFoundException, TokenException
-    {
-        assert(nickname!=null);
-        return findCertByNicknameNative(nickname);
-    }
+        throws ObjectNotFoundException, TokenException;
 
     /**
      * Returns all certificates with the given nickname.
@@ -1046,10 +1043,6 @@ public final class CryptoManager implements TokenSupplier
      */
     private native org.mozilla.jss.crypto.X509Certificate
     findCertByIssuerAndSerialNumberNative(byte[] derIssuer, byte[] serialNumber)
-        throws ObjectNotFoundException, TokenException;
-
-    protected native org.mozilla.jss.crypto.X509Certificate
-    findCertByNicknameNative(String nickname)
         throws ObjectNotFoundException, TokenException;
 
     protected native org.mozilla.jss.crypto.X509Certificate[]

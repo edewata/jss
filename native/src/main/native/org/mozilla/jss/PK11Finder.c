@@ -45,7 +45,7 @@ Java_org_mozilla_jss_CryptoManager_verifyCertificateNowNative3(JNIEnv *env,
  *
  */
 JNIEXPORT jobject JNICALL
-Java_org_mozilla_jss_CryptoManager_findCertByNicknameNative
+Java_org_mozilla_jss_CryptoManager_findCertByNickname
   (JNIEnv *env, jobject this, jstring nickname)
 {
     const char *nick = NULL;
@@ -53,7 +53,12 @@ Java_org_mozilla_jss_CryptoManager_findCertByNicknameNative
     CERTCertificate *cert=NULL;
     PK11SlotInfo *slot=NULL;
 
-    PR_ASSERT(env!=NULL && this!=NULL && nickname!=NULL);
+    PR_ASSERT(env!=NULL && this!=NULL);
+
+    if (nickname == NULL) {
+        JSS_throwMsg(env, ILLEGAL_ARGUMENT_EXCEPTION, "Missing certificate nickname");
+        goto finish;
+    }
 
     nick = JSS_RefJString(env, nickname);
     PR_ASSERT(nick!=NULL);
