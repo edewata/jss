@@ -493,9 +493,12 @@ cp base/target/jss-tests.jar %{buildroot}%{_datadir}/jss/tests/lib
 # The <phase> is only available during development/stabilization. It should
 # not be included in GA/update releases.
 #
+# For example:
+# * Tue May 29 2018 Dogtag PKI Team <devel@lists.dogtagpki.org> 4.5.0-1
+# - Rebase to JSS 4.5.0
+#
 # To list all changes in <branch> since <tag>:
 # $ git log --pretty=oneline --abbrev-commit --no-decorate <tag>..<branch>
 
 %changelog
-* Tue May 29 2018 Dogtag PKI Team <devel@lists.dogtagpki.org> 4.5.0-1
-- Rebase to JSS 4.5.0
+%autochangelog
