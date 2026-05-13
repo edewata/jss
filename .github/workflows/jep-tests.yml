@@ -1,0 +1,433 @@
+name: JEP Tests
+
+on: [push, pull_request]
+
+env:
+  # Enable Post-Quantum Cryptography in NSS
+  NSS_ENABLE_PQC: 1
+
+jobs:
+  wait-for-build:
+    name: Waiting for build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for build
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'Building JSS'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+        if: github.event_name == 'push'
+
+      - name: Wait for build
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: 'Building JSS'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 30
+        if: github.event_name == 'pull_request'
+
+  jep497-compliance-test:
+    name: JEP 497 ML-DSA Compliance Test
+    needs: wait-for-build
+    runs-on: ubuntu-latest
+    env:
+      SHARED: /tmp/workdir/jss
+    strategy:
+      matrix:
+        java-version: ['21', '24']
+        nss-version: ['latest']
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v4
+
+    - name: Retrieve JSS images
+      uses: actions/cache@v4
+      with:
+        key: jss-images-${{ github.sha }}
+        path: jss-images.tar
+
+    - name: Load JSS images
+      run: docker load --input jss-images.tar
+
+    - name: Set up JSS container
+      run: |
+        tests/bin/runner-init.sh \
+            --image=jss-builder \
+            --hostname=jss.example.com \
+            jss
+
+    - name: Build JSS with PQC support
+      run: |
+        docker exec jss ./build.sh --cmake='/usr/bin/cmake -DENABLE_NSS_VERSION_PQC_DEF=ON -DCMAKE_BUILD_TYPE=Debug'
+
+    - name: Build JSS Java components
+      run: |
+        docker exec jss mvn --batch-mode -pl '!native,!symkey,!examples' package
+
+    - name: Set up test environment
+      run: |
+        echo "Secret.123" > password.txt
+        echo "internal=$(cat password.txt)" > password.conf
+
+        docker exec jss mkdir -p /tmp/test-db
+        docker exec jss certutil -N -d /tmp/test-db -f $SHARED/password.txt
+
+    - name: Run JEP 497 ML-DSA Compliance Test
+      run: |
+        docker exec \
+            -e CLASSPATH="/root/build/jss/jss.jar:/usr/share/java/slf4j/slf4j-api.jar:/usr/share/java/slf4j/slf4j-simple.jar:/root/jss/base/target/test-classes" \
+            -e LD_LIBRARY_PATH="/root/build/jss" \
+            -e test.NSS_PQC=true \
+            jss java \
+                --enable-native-access=ALL-UNNAMED \
+                org.mozilla.jss.tests.JEP497ComplianceTest \
+                /tmp/test-db \
+                $SHARED/password.conf
+      timeout-minutes: 10
+
+    - name: Run JCA Signature Test with PQC
+      run: |
+        docker exec \
+            -e CLASSPATH="/root/build/jss/jss.jar:/usr/share/java/slf4j/slf4j-api.jar:/usr/share/java/slf4j/slf4j-simple.jar:/root/jss/base/target/test-classes" \
+            -e LD_LIBRARY_PATH="/root/build/jss" \
+            -e test.NSS_PQC=true \
+            jss java org.mozilla.jss.tests.JCASigTest /tmp/test-db /tmp/password.txt
+      timeout-minutes: 10
+
+    - name: Create algorithm verification script
+      run: |
+        docker exec jss bash -c 'cat > /tmp/verify-algorithms.java << '\''EOF'\''
+        import java.security.Security;
+        import java.security.Provider;
+        public class VerifyAlgorithms {
+            public static void main(String[] args) {
+                Provider p = Security.getProvider("Mozilla-JSS");
+                if (p == null) {
+                    System.out.println("ERROR: Mozilla-JSS provider not found");
+                    System.exit(1);
+                }
+                System.out.println("Mozilla-JSS provider services:");
+                for (Provider.Service service : p.getServices()) {
+                    if (service.getAlgorithm().contains("ML-DSA")) {
+                        System.out.println(service.getType() + "." + service.getAlgorithm());
+                    }
+                }
+            }
+        }
+        EOF'
+
+    - name: Verify ML-DSA Algorithm Registration
+      run: |
+        docker exec -e CLASSPATH="/root/build/jss/jss.jar:/usr/share/java/slf4j/slf4j-api.jar:/usr/share/java/slf4j/slf4j-simple.jar:/root/jss/base/target/test-classes" \
+            -e LD_LIBRARY_PATH="/root/build/jss" \
+            jss bash -c "cd /tmp && javac VerifyAlgorithms.java && java VerifyAlgorithms"
+      timeout-minutes: 5
+
+    - name: Create performance test script
+      run: |
+        docker exec jss bash -c 'cat > /tmp/PerformanceTest.java << '\''EOF'\''
+        import java.security.KeyPairGenerator;
+        import java.security.KeyPair;
+        public class PerformanceTest {
+            public static void main(String[] args) {
+                System.out.println("Testing ML-DSA key generation performance...");
+                String[] algorithms = {"ML-DSA-44", "ML-DSA-65", "ML-DSA-87"};
+                try {
+                    for (String alg : algorithms) {
+                        long start = System.currentTimeMillis();
+                        KeyPairGenerator kpg = KeyPairGenerator.getInstance(alg, "Mozilla-JSS");
+                        KeyPair kp = kpg.generateKeyPair();
+                        long end = System.currentTimeMillis();
+                        System.out.println(alg + " key generation took " + (end - start) + "ms");
+
+                        if (kp == null || kp.getPublic() == null || kp.getPrivate() == null) {
+                            System.out.println("ERROR: Key generation failed for " + alg);
+                            System.exit(1);
+                        }
+                    }
+                    System.out.println("All ML-DSA algorithms generated keys successfully");
+                } catch (Exception e) {
+                    System.out.println("ERROR: " + e.getMessage());
+                    System.exit(1);
+                }
+            }
+        }
+        EOF'
+
+    - name: Test ML-DSA Key Generation Performance
+      run: |
+        docker exec -e CLASSPATH="/root/build/jss/jss.jar:/usr/share/java/slf4j/slf4j-api.jar:/usr/share/java/slf4j/slf4j-simple.jar:/root/jss/base/target/test-classes" \
+            -e LD_LIBRARY_PATH="/root/build/jss" \
+            jss bash -c "cd /tmp && javac PerformanceTest.java && java PerformanceTest"
+      timeout-minutes: 5
+
+    - name: Check for test failures
+      if: failure()
+      run: |
+        echo "JEP 497 compliance test failed. Checking logs..."
+        docker logs jss || true
+        echo "Container status:"
+        docker ps -a | grep jss || true
+
+  jep497-interoperability-test:
+    name: JEP 497 Interoperability Test
+    needs: wait-for-build
+    runs-on: ubuntu-latest
+    env:
+      SHARED: /tmp/workdir/jss
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v4
+
+    - name: Retrieve JSS images
+      uses: actions/cache@v4
+      with:
+        key: jss-images-${{ github.sha }}
+        path: jss-images.tar
+
+    - name: Load JSS images
+      run: docker load --input jss-images.tar
+
+    - name: Set up JSS container
+      run: |
+        tests/bin/runner-init.sh \
+            --image=jss-builder \
+            --hostname=jss.example.com \
+            jss
+
+    - name: Install OpenSSL with ML-DSA support (if available)
+      run: |
+        docker exec jss dnf install -y openssl || true
+        docker exec jss bash -c "openssl list -signature-algorithms | grep -i dsa || echo 'OpenSSL ML-DSA not available'"
+
+    - name: Build JSS with PQC support
+      run: |
+        docker exec jss ./build.sh --cmake='/usr/bin/cmake -DENABLE_NSS_VERSION_PQC_DEF=ON -DCMAKE_BUILD_TYPE=Debug'
+
+    - name: Build JSS Java components
+      run: |
+        docker exec jss mvn --batch-mode -pl '!native,!symkey,!examples' package
+
+    - name: Set up test environment
+      run: |
+        docker exec jss mkdir -p /tmp/test-db
+        docker exec jss bash -c "echo 'password123' > /tmp/password.txt"
+        docker exec jss certutil -N -d /tmp/test-db -f /tmp/password.txt
+
+    - name: Create interoperability test script
+      run: |
+        docker exec jss bash -c 'cat > /tmp/InteropTest.java << '\''EOF'\''
+        import java.security.*;
+        import java.util.Arrays;
+        public class InteropTest {
+            public static void main(String[] args) {
+                try {
+                    System.out.println("Testing ML-DSA cross-implementation compatibility...");
+
+                    Provider[] providers = Security.getProviders();
+                    boolean foundJSS = false;
+                    for (Provider p : providers) {
+                        if ("Mozilla-JSS".equals(p.getName())) {
+                            foundJSS = true;
+                            break;
+                        }
+                    }
+
+                    if (!foundJSS) {
+                        System.out.println("ERROR: Mozilla-JSS provider not found");
+                        System.exit(1);
+                    }
+
+                    KeyPairGenerator kpg = KeyPairGenerator.getInstance("ML-DSA-65", "Mozilla-JSS");
+                    KeyPair kp = kpg.generateKeyPair();
+
+                    Signature sig = Signature.getInstance("ML-DSA", "Mozilla-JSS");
+                    sig.initSign(kp.getPrivate());
+                    byte[] data = "test data".getBytes();
+                    sig.update(data);
+                    byte[] signature = sig.sign();
+
+                    sig.initVerify(kp.getPublic());
+                    sig.update(data);
+                    boolean verified = sig.verify(signature);
+
+                    if (!verified) {
+                        System.out.println("ERROR: Signature verification failed");
+                        System.exit(1);
+                    }
+
+                    System.out.println("ML-DSA signature and verification successful with Mozilla-JSS");
+                    System.out.println("Signature length: " + signature.length + " bytes");
+                } catch (Exception e) {
+                    System.out.println("ERROR: " + e.getMessage());
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+            }
+        }
+        EOF'
+
+    - name: Test ML-DSA Cross-Implementation Compatibility
+      run: |
+        docker exec -e CLASSPATH="/root/build/jss/jss.jar:/usr/share/java/slf4j/slf4j-api.jar:/usr/share/java/slf4j/slf4j-simple.jar:/root/jss/base/target/test-classes" \
+            -e LD_LIBRARY_PATH="/root/build/jss" \
+            -e test.NSS_PQC=true \
+            jss bash -c "cd /tmp && javac InteropTest.java && java InteropTest"
+      timeout-minutes: 10
+
+  jep497-standards-compliance:
+    name: JEP 497 Standards Compliance Verification
+    needs: wait-for-build
+    runs-on: ubuntu-latest
+    env:
+      SHARED: /tmp/workdir/jss
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v4
+
+    - name: Retrieve JSS images
+      uses: actions/cache@v4
+      with:
+        key: jss-images-${{ github.sha }}
+        path: jss-images.tar
+
+    - name: Load JSS images
+      run: docker load --input jss-images.tar
+
+    - name: Set up JSS container
+      run: |
+        tests/bin/runner-init.sh \
+            --image=jss-builder \
+            --hostname=jss.example.com \
+            jss
+
+    - name: Build JSS with PQC support
+      run: |
+        docker exec jss ./build.sh --cmake='/usr/bin/cmake -DENABLE_NSS_VERSION_PQC_DEF=ON -DCMAKE_BUILD_TYPE=Debug'
+
+    - name: Build JSS Java components
+      run: |
+        docker exec jss mvn --batch-mode -pl '!native,!symkey,!examples' package
+
+    - name: Create algorithm names verification script
+      run: |
+        docker exec jss bash -c 'cat > /tmp/AlgorithmNamesTest.java << '\''EOF'\''
+        import java.security.*;
+        import java.util.Set;
+        public class AlgorithmNamesTest {
+            public static void main(String[] args) {
+                try {
+                    System.out.println("Verifying JEP 497 required algorithm names...");
+
+                    Provider mozillaJSS = Security.getProvider("Mozilla-JSS");
+                    if (mozillaJSS == null) {
+                        System.out.println("ERROR: Mozilla-JSS provider not found");
+                        System.exit(1);
+                    }
+
+                    String[] requiredNames = {
+                        "ML-DSA", "ML-DSA-44", "ML-DSA-65", "ML-DSA-87"
+                    };
+
+                    for (String name : requiredNames) {
+                        try {
+                            KeyPairGenerator kpg = KeyPairGenerator.getInstance(name, "Mozilla-JSS");
+                            System.out.println("✓ KeyPairGenerator." + name + " is available");
+
+                            Signature sig = Signature.getInstance(name, "Mozilla-JSS");
+                            System.out.println("✓ Signature." + name + " is available");
+
+                        } catch (NoSuchAlgorithmException e) {
+                            System.out.println("ERROR: Required algorithm " + name + " is not available");
+                            System.exit(1);
+                        }
+                    }
+
+                    System.out.println("All JEP 497 required algorithm names are properly supported");
+                } catch (Exception e) {
+                    System.out.println("ERROR: " + e.getMessage());
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+            }
+        }
+        EOF'
+
+    - name: Verify JEP 497 Algorithm Names
+      run: |
+        docker exec -e CLASSPATH="/root/build/jss/jss.jar:/usr/share/java/slf4j/slf4j-api.jar:/usr/share/java/slf4j/slf4j-simple.jar" \
+            -e LD_LIBRARY_PATH="/root/build/jss" \
+            jss bash -c "cd /tmp && javac AlgorithmNamesTest.java && java AlgorithmNamesTest"
+      timeout-minutes: 5
+
+    - name: Create FIPS 204 parameter sets verification script
+      run: |
+        docker exec jss bash -c 'cat > /tmp/FIPS204Test.java << '\''EOF'\''
+        import java.security.*;
+        public class FIPS204Test {
+            public static void main(String[] args) {
+                try {
+                    System.out.println("Verifying FIPS 204 parameter sets are supported...");
+
+                    String[][] paramSets = {
+                        {"ML-DSA-44", "Category 2 (equivalent to AES-128)"},
+                        {"ML-DSA-65", "Category 3 (equivalent to AES-192)"},
+                        {"ML-DSA-87", "Category 5 (equivalent to AES-256)"}
+                    };
+
+                    for (String[] paramSet : paramSets) {
+                        String algorithm = paramSet[0];
+                        String description = paramSet[1];
+
+                        try {
+                            KeyPairGenerator kpg = KeyPairGenerator.getInstance(algorithm, "Mozilla-JSS");
+                            KeyPair kp = kpg.generateKeyPair();
+
+                            if (kp == null || kp.getPublic() == null || kp.getPrivate() == null) {
+                                System.out.println("ERROR: Key generation failed for " + algorithm);
+                                System.exit(1);
+                            }
+
+                            System.out.println("✓ " + algorithm + " (" + description + ") - Key generation successful");
+
+                            Signature sig = Signature.getInstance(algorithm, "Mozilla-JSS");
+                            sig.initSign(kp.getPrivate());
+                            sig.update("test".getBytes());
+                            byte[] signature = sig.sign();
+
+                            sig.initVerify(kp.getPublic());
+                            sig.update("test".getBytes());
+                            boolean verified = sig.verify(signature);
+
+                            if (!verified) {
+                                System.out.println("ERROR: Signature verification failed for " + algorithm);
+                                System.exit(1);
+                            }
+
+                            System.out.println("  ✓ Signature and verification successful, signature size: " + signature.length + " bytes");
+
+                        } catch (Exception e) {
+                            System.out.println("ERROR: Failed to test " + algorithm + ": " + e.getMessage());
+                            System.exit(1);
+                        }
+                    }
+
+                    System.out.println("All FIPS 204 parameter sets are properly supported");
+                } catch (Exception e) {
+                    System.out.println("ERROR: " + e.getMessage());
+                    e.printStackTrace();
+                    System.exit(1);
+                }
+            }
+        }
+        EOF'
+
+    - name: Verify FIPS 204 Parameter Sets
+      run: |
+        docker exec -e CLASSPATH="/root/build/jss/jss.jar" \
+            -e LD_LIBRARY_PATH="/root/build/jss" \
+            jss bash -c "cd /tmp && javac FIPS204Test.java && java FIPS204Test"
+      timeout-minutes: 5

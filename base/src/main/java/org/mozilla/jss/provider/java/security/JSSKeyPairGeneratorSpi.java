@@ -62,7 +62,7 @@ public class JSSKeyPairGeneratorSpi
       try {
         return kpg.genKeyPair();
       } catch(TokenException e) {
-        throw new TokenRuntimeException(e.getMessage());
+        throw new TokenRuntimeException(e.getMessage(), e);
       }
     }
 
