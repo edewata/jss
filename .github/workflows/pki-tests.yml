@@ -1,46 +1,28 @@
 name: PKI Tests
 
-on: [push, pull_request]
+on:
+  workflow_run:
+    workflows: ['Build JSS']
+    types:
+      - completed
 
 jobs:
-  build:
-    name: Waiting for build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for build
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'Building JSS'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-        if: github.event_name == 'push'
-
-      - name: Wait for build
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: 'Building JSS'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-        if: github.event_name == 'pull_request'
-
   pki-build-test:
     name: Testing PKI build
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/pki-build-test.yml
 
   pki-tools-test:
     name: Testing PKI tools
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/pki-tools-test.yml
 
   pki-ca-test:
     name: Testing PKI CA
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/pki-ca-test.yml
 
   pki-tps-test:
     name: Testing PKI TPS
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/pki-tps-test.yml
