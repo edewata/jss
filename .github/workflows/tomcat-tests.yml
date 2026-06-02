@@ -1,51 +1,33 @@
 name: Tomcat Tests
 
-on: [push, pull_request]
+on:
+  workflow_run:
+    workflows: ['Build JSS']
+    types:
+      - completed
 
 jobs:
-  build:
-    name: Waiting for build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Wait for build
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.ref }}
-          check-name: 'Building JSS'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-        if: github.event_name == 'push'
-
-      - name: Wait for build
-        uses: lewagon/wait-on-check-action@v1.3.4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: 'Building JSS'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-        if: github.event_name == 'pull_request'
-
   tomcat-basic-test:
     name: Basic Tomcat
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/tomcat-basic-test.yml
 
   tomcat-https-default-test:
     name: Tomcat HTTPS with default settings
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/tomcat-https-default-test.yml
 
   tomcat-https-tls13-test:
     name: Tomcat HTTPS with TLS 1.3
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/tomcat-https-tls13-test.yml
 
   tomcat-https-ciphers-test:
     name: Tomcat HTTPS with specific ciphers
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/tomcat-https-ciphers-test.yml
 
   tomcat-https-multi-certificate-test:
     name: Tomcat HTTPS with multiple certificates 
-    needs: build
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/tomcat-https-multi-certificate-test.yml
