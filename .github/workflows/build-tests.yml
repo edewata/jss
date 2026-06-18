@@ -36,7 +36,7 @@ jobs:
     container: ${{ matrix.os }}
     steps:
     - name: Clone repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Set up Java
       uses: actions/setup-java@v4
@@ -94,7 +94,7 @@ jobs:
       SHARED: /tmp/workdir/jss
     steps:
     - name: Clone repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Retrieve JSS images
       uses: actions/cache@v5
@@ -148,7 +148,7 @@ jobs:
       JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
     steps:
       - name: Clone repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get JNI symbols in the code
         run: |
@@ -174,7 +174,7 @@ jobs:
       SHARED: /tmp/workdir/jss
     steps:
     - name: Clone repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Retrieve JSS images
       uses: actions/cache@v5
@@ -279,7 +279,7 @@ jobs:
       SHARED: /tmp/workdir/jss
     steps:
     - name: Clone repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
 
     - name: Retrieve JSS images
       uses: actions/cache@v5
