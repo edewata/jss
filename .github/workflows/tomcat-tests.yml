@@ -49,3 +49,8 @@ jobs:
     name: Tomcat HTTPS with multiple certificates 
     needs: build
     uses: ./.github/workflows/tomcat-https-multi-certificate-test.yml
+
+  tomcat-memory-leak-test:
+    name: Tomcat memory leak
+    needs: build
+    uses: ./.github/workflows/tomcat-memory-leak-test.yml
