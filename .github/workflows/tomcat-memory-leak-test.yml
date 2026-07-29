@@ -1,0 +1,346 @@
+name: Tomcat memory leak
+
+on: workflow_call
+
+env:
+  NAMESPACE: ${{ vars.REGISTRY_NAMESPACE || 'dogtagpki' }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      SHARED: /tmp/workdir/jss
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v7
+
+      - name: Retrieve PKI images
+        uses: actions/cache@v5
+        with:
+          key: jss-images-${{ github.sha }}
+          path: jss-images.tar
+
+      - name: Load PKI images
+        run: docker load --input jss-images.tar
+
+      - name: Create network
+        run: docker network create example
+
+      - name: Set up server container
+        run: |
+          tests/bin/runner-init.sh \
+              --hostname=server.example.com \
+              --network=example \
+              --network-alias=server.example.com \
+              server
+
+          docker exec server dnf install -y xmlstarlet
+
+      - name: Install Java SDK
+        run: |
+          JAVA_SDK=$(docker exec server rpm -qa \
+              | sed -En 's/^(java-[0-9]+-openjdk)-headless-.*/\1-devel/p')
+          docker exec server dnf install -y $JAVA_SDK
+
+      - name: Install LDAP SDK
+        run: |
+          docker create --name=ldapjdk-dist quay.io/$NAMESPACE/ldapjdk-dist:latest
+          docker cp ldapjdk-dist:/root/RPMS/. /tmp/ldapjdk/
+          docker rm -f ldapjdk-dist
+
+          docker cp /tmp/ldapjdk/. server:/root/ldapjdk/
+          docker exec server bash -c "dnf install -y /root/ldapjdk/*"
+
+      - name: Install PKI
+        run: |
+          docker create --name=pki-dist quay.io/$NAMESPACE/pki-dist:latest
+          docker cp pki-dist:/root/RPMS/. /tmp/pki/
+          docker rm -f pki-dist
+
+          docker cp /tmp/pki/. server:/root/pki/
+          docker exec server bash -c "dnf install -y /root/pki/*"
+
+      - name: Create PKI server
+        run: |
+          docker exec server pki-server create -v
+          docker exec server pki-server nss-create --no-password
+
+      - name: Create CA signing cert
+        run: |
+          docker exec server pki-server cert-request \
+              --subject "CN=CA Signing Certificate" \
+              --ext /usr/share/pki/server/certs/ca_signing.conf \
+              ca_signing
+
+          docker exec server pki-server cert-create \
+              --ext /usr/share/pki/server/certs/ca_signing.conf \
+              ca_signing
+
+          docker exec server pki-server cert-import ca_signing
+
+      - name: Create SSL server cert
+        run: |
+          docker exec server pki-server cert-request \
+              --subject "CN=server.example.com" \
+              --ext /usr/share/pki/server/certs/sslserver.conf \
+              sslserver
+
+          docker exec server pki-server cert-create \
+              --issuer ca_signing \
+              --ext /usr/share/pki/server/certs/sslserver.conf \
+              sslserver
+
+          docker exec server pki-server cert-import sslserver
+
+      - name: Create HTTPS connector
+        run: |
+          docker exec server pki-server jss-enable
+
+          docker exec server pki-server http-connector-add \
+              --port 8443 \
+              --scheme https \
+              --secure true \
+              --sslEnabled true \
+              --sslProtocol SSL \
+              --sslImpl org.dogtagpki.jss.tomcat.JSSImplementation \
+              --certVerification optional \
+              Secure
+
+          docker exec server pki-server http-connector-cert-add \
+              --keyAlias sslserver \
+              --keystoreType pkcs11 \
+              --keystoreProvider Mozilla-JSS
+
+      - name: Disable access log buffer
+        run: |
+          docker exec server xmlstarlet edit --inplace \
+              -u "//Valve[@className='org.apache.catalina.valves.AccessLogValve']/@buffered" \
+              -v "false" \
+              -i "//Valve[@className='org.apache.catalina.valves.AccessLogValve' and not(@buffered)]" \
+              -t attr \
+              -n "buffered" \
+              -v "false" \
+              /etc/pki/pki-tomcat/server.xml
+
+      - name: Check server.xml
+        if: always()
+        run: |
+          docker exec server cat /etc/pki/pki-tomcat/server.xml
+
+      - name: Deploy webapps
+        run: |
+          docker exec server pki-server webapp-deploy \
+              --descriptor /usr/share/pki/server/conf/Catalina/localhost/ROOT.xml \
+              ROOT
+
+          docker exec server pki-server webapp-deploy \
+              --descriptor /usr/share/pki/server/conf/Catalina/localhost/pki.xml \
+              pki
+
+      - name: Start PKI server
+        run: |
+          docker exec server pki-server start --wait -v
+
+          PID=$(docker exec server ps -C java -o pid --no-headers | awk '{print $1;}')
+          echo "PID=$PID"
+          echo "$PID" > java.pid
+
+      - name: Initialize PKI client
+        run: |
+          docker exec server pki \
+              nss-cert-import \
+              --cert /var/lib/pki/pki-tomcat/conf/certs/ca_signing.crt \
+              --trust CT,C,C \
+              ca_signing
+
+      - name: Check initial heap
+        run: |
+          PID=$(cat java.pid)
+
+          # run garbage collector
+          docker exec server jcmd $PID GC.run
+          sleep 5
+
+          # get heap snapshot
+          docker exec server jhsdb jmap --histo --pid $PID \
+              | tee output
+
+          # get object class names and counts
+          sed -En \
+              -e '1,/^-+$/d' \
+              -e '/^Total :/d' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.dogtagpki\..*)/\2 \1/p' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.mozilla\..*)$/\2 \1/p' \
+              output \
+              > heap1
+
+      - name: Idle for 1 minute
+        run: |
+          sleep 60
+
+      - name: Check heap after idle
+        run: |
+          PID=$(cat java.pid)
+
+          # run garbage collector
+          docker exec server jcmd $PID GC.run
+          sleep 5
+
+          # get heap snapshot
+          docker exec server jhsdb jmap --histo --pid $PID \
+              | tee output
+
+          # get object class names and counts
+          sed -En \
+              -e '1,/^-+$/d' \
+              -e '/^Total :/d' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.dogtagpki\..*)/\2 \1/p' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.mozilla\..*)$/\2 \1/p' \
+              output \
+              > heap2
+
+      - name: Check memory leak after idle
+        run: |
+          tests/bin/check-heap-changes.py heap1 heap2
+
+      - name: Run load test with HTTP
+        run: |
+          PID=$(cat java.pid)
+
+          # run pki info command 50 times
+          for i in $(seq 1 50); do
+              docker exec server pki -U http://server.example.com:8080 info
+          done
+
+      - name: Check heap after load test with HTTP
+        run: |
+          PID=$(cat java.pid)
+
+          # run garbage collector
+          docker exec server jcmd $PID GC.run
+          sleep 5
+
+          # get heap snapshot
+          docker exec server jhsdb jmap --histo --pid $PID \
+              | tee output
+
+          # get object class names and counts
+          sed -En \
+              -e '1,/^-+$/d' \
+              -e '/^Total :/d' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.dogtagpki\..*)/\2 \1/p' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.mozilla\..*)$/\2 \1/p' \
+              output \
+              > heap3
+
+      - name: Check memory leak after load test with HTTP
+        run: |
+          tests/bin/check-heap-changes.py heap2 heap3
+
+      - name: Run load test with HTTPS
+        run: |
+          PID=$(cat java.pid)
+
+          # run pki info command 50 times
+          for i in $(seq 1 50); do
+              docker exec server pki info
+          done
+
+      - name: Check heap after load test with HTTPS
+        run: |
+          PID=$(cat java.pid)
+
+          # run garbage collector
+          docker exec server jcmd $PID GC.run
+          sleep 5
+
+          # get heap snapshot
+          docker exec server jhsdb jmap --histo --pid $PID \
+              | tee output
+
+          # get object class names and counts
+          sed -En \
+              -e '1,/^-+$/d' \
+              -e '/^Total :/d' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.dogtagpki\..*)/\2 \1/p' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.mozilla\..*)$/\2 \1/p' \
+              output \
+              > heap4
+
+      - name: Check memory leak after load test with HTTPS
+        run: |
+          tests/bin/check-heap-changes.py heap3 heap4
+
+      - name: Create admin cert
+        run: |
+          docker exec server pki \
+              nss-cert-request \
+              --subject "UID=admin" \
+              --ext /usr/share/pki/server/certs/admin.conf \
+              --csr admin.csr
+
+          docker exec server pki \
+              -d /var/lib/pki/pki-tomcat/alias \
+              nss-cert-issue \
+              --issuer ca_signing \
+              --csr admin.csr \
+              --ext /usr/share/pki/server/certs/admin.conf \
+              --cert admin.crt
+
+          docker exec server pki \
+              nss-cert-import \
+              --cert admin.crt \
+              admin
+
+      - name: Run load test with authenticated HTTPS
+        run: |
+          PID=$(cat java.pid)
+
+          # run pki info command 50 times
+          for i in $(seq 1 50); do
+              docker exec server pki -n admin info
+          done
+
+      - name: Check heap after load test with authenticated HTTPS
+        run: |
+          PID=$(cat java.pid)
+
+          # run garbage collector
+          docker exec server jcmd $PID GC.run
+          sleep 5
+
+          # get heap snapshot
+          docker exec server jhsdb jmap --histo --pid $PID \
+              | tee output
+
+          # get object class names and counts
+          sed -En \
+              -e '1,/^-+$/d' \
+              -e '/^Total :/d' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.dogtagpki\..*)/\2 \1/p' \
+              -e 's/^\S+\s+(\S+)\s+\S+\s+(org\.mozilla\..*)$/\2 \1/p' \
+              output \
+              > heap5
+
+      - name: Check memory leak after load test with authenticated HTTPS
+        run: |
+          tests/bin/check-heap-changes.py heap4 heap5
+
+      - name: Stop PKI server
+        run: |
+          docker exec server pki-server stop --wait -v
+
+      - name: Remove PKI server
+        run: |
+          docker exec server pki-server remove -v
+
+      - name: Check PKI server systemd journal
+        if: always()
+        run: |
+          docker exec server journalctl -x --no-pager -u pki-tomcatd@pki-tomcat.service
+
+      - name: Check PKI server access log
+        if: always()
+        run: |
+          docker exec server find /var/log/pki/pki-tomcat -name "localhost_access_log.*" -exec cat {} \;
