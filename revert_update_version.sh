@@ -1,4 +1,4 @@
-#!/usr/bin/bash -e
+#!/bin/bash -e
 
 # Use this script to revert the commit and delete the tag created using the update_version.sh script.
 

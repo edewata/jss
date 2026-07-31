@@ -1,4 +1,4 @@
-#!/usr/bin/bash -e
+#!/bin/bash -e
 
 # BEGIN COPYRIGHT BLOCK
 # (C) 2018 Red Hat, Inc.

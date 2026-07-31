@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # A shell script to create a reproducible jar distirbution for JSS.
 #

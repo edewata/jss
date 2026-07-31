@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 # This script reads the contents of the OS CA bundle store,
 #   /usr/share/pki/ca-trust-source/ca-bundle.trust.p11-kit
