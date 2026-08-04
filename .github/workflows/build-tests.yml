@@ -25,70 +25,9 @@ jobs:
           wait-interval: 30
         if: github.event_name == 'pull_request'
 
-  build-test:
-    name: Build Test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        os:
-          - 'debian:testing'
-          - 'ubuntu:rolling'
-    container: ${{ matrix.os }}
-    steps:
-    - name: Clone repository
-      uses: actions/checkout@v7
-
-    - name: Set up Java
-      uses: actions/setup-java@v5
-      with:
-        java-version: 21
-        distribution: 'adopt'
-
-    - name: Install dependencies
-      run: |
-        apt-get update
-
-        # https://salsa.debian.org/freeipa-team/jss/-/blob/master/debian/control
-        apt-get install -y \
-            cmake \
-            g++ \
-            junit5 \
-            libcommons-lang3-java \
-            libnss3-dev \
-            libnss3-tools \
-            libopentest4j-java \
-            libslf4j-java \
-            maven \
-            openjdk-25-jdk \
-            unzip \
-            zip
-
-    - name: Build with CMake
-      run: |
-        # the current NSS on Debian/Ubuntu does not support ML-DSA nor ML-KEM
-        # https://wiki.debian.org/DebianReleases
-        # https://packages.debian.org/source/trixie/nss
-        ./build.sh --without-mldsa --without-mlkem
-
-    - name: Build with Maven
-      run: mvn --batch-mode package
-
-    - name: Compare jss.jar
-      run: |
-        jar tvf ~/build/jss/jss.jar \
-            | awk '{print $8;}' \
-            | sort \
-            | grep -v '/$' \
-            | tee cmake.out
-        jar tvf base/target/jss.jar \
-            | awk '{print $8;}' \
-            | sort \
-            | grep -v '/$' \
-            | grep -v '^META-INF/maven/' \
-            | tee maven.out
-        diff cmake.out maven.out
-
-    # TODO: Run examples
+  debian-test:
+    name: Debian Build Test
+    uses: ./.github/workflows/debian-test.yml
 
   fedora-test:
     name: Fedora Build Test
