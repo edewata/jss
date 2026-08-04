@@ -1,0 +1,108 @@
+name: RPM Test
+
+on: workflow_call
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      SHARED: /tmp/workdir/jss
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v7
+
+    - name: Retrieve JSS images
+      uses: actions/cache@v5
+      with:
+        key: jss-images-${{ github.sha }}
+        path: jss-images.tar
+
+    - name: Load jss-images image
+      run: docker load --input jss-images.tar
+
+    - name: Set up JSS container
+      run: |
+        tests/bin/runner-init.sh \
+            --image=jss-builder \
+            --hostname=jss.example.com \
+            jss
+
+          # get Fedora version
+          FEDORA_VERSION=$(docker exec jss sed -n 's/^VERSION_ID=//p' /etc/os-release)
+          echo "FEDORA_VERSION=$FEDORA_VERSION" >> $GITHUB_ENV
+
+    - name: Install RPMs
+      run: |
+        docker exec jss bash -c "dnf install -y build/RPMS/*.rpm"
+
+    - name: Build with Maven
+      run: |
+        docker exec jss mvn --batch-mode -pl '!native,!symkey,!examples' package
+
+    - name: Compare jss.jar
+      run: |
+        docker exec jss jar tvf /usr/share/java/jss/jss.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee rpm.out
+        docker exec jss jar tvf base/target/jss.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee maven.out
+        diff rpm.out maven.out
+
+    - name: Compare jss-tomcat.jar
+      run: |
+        docker exec jss jar tvf /usr/share/java/jss/jss-tomcat.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee rpm.out
+        docker exec jss jar tvf tomcat/target/jss-tomcat.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee maven.out
+        diff rpm.out maven.out
+
+    - name: Compare jss-tomcat-9.0.jar
+      if: ${{ fromJSON(env.FEDORA_VERSION) < 43 }}
+      run: |
+        docker exec jss jar tvf /usr/share/java/jss/jss-tomcat-9.0.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee rpm.out
+        docker exec jss jar tvf tomcat-9.0/target/jss-tomcat-9.0.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee maven.out
+        diff rpm.out maven.out
+
+    - name: Compare jss-tomcat-10.1.jar
+      if: ${{ fromJSON(env.FEDORA_VERSION) >= 43 }}
+      run: |
+        docker exec jss jar tvf /usr/share/java/jss/jss-tomcat-10.1.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee rpm.out
+        docker exec jss jar tvf tomcat-10.1/target/jss-tomcat-10.1.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee maven.out
+        diff rpm.out maven.out
+
+    - name: Install RPMInspect
+      run: |
+        docker exec jss dnf copr enable -y copr.fedorainfracloud.org/dcantrell/rpminspect
+        docker exec jss dnf install -y rpminspect rpminspect-data-fedora
+
+    - name: Run RPMInspect on SRPM and RPMs
+      run: |
+        docker exec jss ./tests/bin/rpminspect.sh
