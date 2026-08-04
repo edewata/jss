@@ -329,3 +329,7 @@ jobs:
     - name: Run JSS tests
       run: |
         docker exec -w /root/jss/build jss ctest --output-on-failure
+
+  version-number-test:
+    name: Version number
+    uses: ./.github/workflows/version-number-test.yml
