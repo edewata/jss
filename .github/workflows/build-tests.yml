@@ -274,55 +274,7 @@ jobs:
   sandbox-test:
     name: Sandbox Test
     needs: wait-for-build
-    runs-on: ubuntu-latest
-    env:
-      SHARED: /tmp/workdir/jss
-    steps:
-    - name: Clone repository
-      uses: actions/checkout@v7
-
-    - name: Retrieve JSS images
-      uses: actions/cache@v5
-      with:
-        key: jss-images-${{ github.sha }}
-        path: jss-images.tar
-
-    - name: Load jss-images image
-      run: docker load --input jss-images.tar
-
-    - name: Set up JSS container
-      run: |
-        tests/bin/runner-init.sh \
-            --image=jss-builder \
-            --hostname=jss.example.com \
-            jss
-
-    - name: Install build dependencies
-      run: |
-        docker exec jss dnf builddep -y nspr nss
-        docker exec jss dnf install -y mercurial \
-            python-unversioned-command \
-            gyp \
-            ninja-build
-
-    - name: Build NSPR and NSS
-      run: |
-        docker exec jss hg clone https://hg.mozilla.org/projects/nspr
-        docker exec jss hg clone https://hg.mozilla.org/projects/nss
-        docker exec -w /root/jss/nss jss \
-            bash build.sh --enable-fips --enable-libpkix
-
-    - name: Build JSS
-      run: |
-        docker exec -w /root/jss/build jss cmake -DCMAKE_BUILD_TYPE=Debug -DENABLE_NSS_VERSION_PQC_DEF=ON ..
-        docker exec -w /root/jss/build jss make all
-      env:
-        SANDBOX: 1
-        CFLAGS: -Wall -Wextra -Werror -Og -ggdb
-
-    - name: Run JSS tests
-      run: |
-        docker exec -w /root/jss/build jss ctest --output-on-failure
+    uses: ./.github/workflows/sandbox-test.yml
 
   version-number-test:
     name: Version number
