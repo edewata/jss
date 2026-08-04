@@ -1,0 +1,57 @@
+name: Fedora Build Test
+
+on: workflow_call
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    env:
+      SHARED: /tmp/workdir/jss
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v7
+
+    - name: Retrieve JSS images
+      uses: actions/cache@v5
+      with:
+        key: jss-images-${{ github.sha }}
+        path: jss-images.tar
+
+    - name: Load JSS images
+      run: docker load --input jss-images.tar
+
+    - name: Set up JSS container
+      run: |
+        tests/bin/runner-init.sh \
+            --image=jss-builder \
+            --hostname=jss.example.com \
+            jss
+
+    - name: Build with CMake
+      run: |
+        # the current NSS on Fedora supports ML-DSA and ML-KEM
+        docker exec jss ./build.sh
+
+    - name: Build with Maven
+      run: |
+        docker exec jss mvn --batch-mode -pl '!native,!symkey,!examples' package
+
+    - name: Compare jss.jar
+      run: |
+        docker exec jss \
+            jar tvf /root/build/jss/jss.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | tee cmake.out
+        docker exec jss \
+            jar tvf base/target/jss.jar \
+            | awk '{print $8;}' \
+            | sort \
+            | grep -v '/$' \
+            | grep -v '^META-INF/maven/' \
+            | tee maven.out
+        diff cmake.out maven.out
+
+    # TODO: Run examples
