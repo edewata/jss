@@ -16,6 +16,7 @@ import java.util.Arrays;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.RC2ParameterSpec;
 
+import org.mozilla.jss.asn1.BIT_STRING;
 import org.mozilla.jss.crypto.Algorithm;
 import org.mozilla.jss.crypto.EncryptionAlgorithm;
 import org.mozilla.jss.crypto.HMACAlgorithm;
@@ -27,7 +28,6 @@ import org.mozilla.jss.crypto.KeyWrapper;
 import org.mozilla.jss.crypto.PrivateKey;
 import org.mozilla.jss.crypto.SymmetricKey;
 import org.mozilla.jss.crypto.TokenException;
-import org.mozilla.jss.asn1.BIT_STRING;
 import org.mozilla.jss.pkix.primitive.SubjectPublicKeyInfo;
 import org.mozilla.jss.util.NativeEnclosure;
 import org.mozilla.jss.util.NativeProxy;
@@ -152,19 +152,26 @@ public final class PK11KeyWrapper implements KeyWrapper {
         if( key==null ) {
             throw new InvalidKeyException("Key is null");
         }
-        if( ! (key instanceof PK11PubKey) ) {
-            throw new InvalidKeyException("Key is not a PKCS #11 key");
-        }
+
+        //if( ! (key instanceof PK11PubKey) ) {
+        //    throw new InvalidKeyException("Key is not a PKCS #11 key");
+        //}
+
+        logger.info("PK11KeyWrapper: algorithm: " + algorithm);
+
         KeyType type = null;
         try {
             type = KeyType.getKeyTypeFromAlgorithm(algorithm);
-            if( (type == KeyType.RSA && !(key instanceof RSAPublicKey)) ||
+            logger.info("PK11KeyWrapper: type: " + type);
+            logger.info("PK11KeyWrapper: class: " + key.getClass().getName());
+
+            //if( (type == KeyType.RSA && !(key instanceof RSAPublicKey)) ||
 		// requires JAVA 1.5
                 // (type == KeyType.EC && !(key instanceof ECPublicKey)) ||
-                (type == KeyType.DSA && !(key instanceof DSAPublicKey)) ) {
-                throw new InvalidKeyException("Key is not the right type for "+
-                    "this algorithm");
-            }
+            //    (type == KeyType.DSA && !(key instanceof DSAPublicKey)) ) {
+            //    throw new InvalidKeyException("Key is not the right type for "+
+            //        "this algorithm");
+            //}
         } catch( NoSuchAlgorithmException e ) {
             throw new RuntimeException("Unable to find algorithm (" + algorithm + ") from key type (" + type + ") : " + e.getMessage(), e);
         }
